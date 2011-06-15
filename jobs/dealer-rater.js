@@ -40,25 +40,27 @@ Base.mixin._parseRating = function($, data) {
  */
 Base.mixin._parseComments = function($, data) {
     var comments = [];
+    var self = this;
     $("div.hreview").each(function(div) {
-        var comment = {
-            date:new Date($("span.value-title", div).attribs.title),
-            content:$("span.description", div).text,
-            metrics:[]
-        };
-        var scores = $('.userReviewTopRight script', div).text;
+        if (self.more()) {
+            var comment = {
+                date:new Date($("span.value-title", div).attribs.title),
+                content:$("span.description", div).text,
+                metrics:[]
+            };
+            var scores = $('.userReviewTopRight script', div).text;
 
 
-        var matches = scores.match(RATING_REGX);
-        for (var i in METRICS) {
-            comment.metrics[METRICS[i]] = matches[i];
+            var matches = scores.match(RATING_REGX);
+            for (var i in METRICS) {
+                comment.metrics[METRICS[i]] = matches[i];
+            }
+            var matches = scores.match(/rating-([0-9]+).png/);
+            comment.score = matches[1];
+            if (self.check(comment)) {
+                comments.push(comment);
+            }
         }
-        var mathces = scores.match(/rating-([0-9]+).png/);
-        comment.socre = matches[1];
-        console.log(comment);
-
-
-        comments.push(comment);
 
 
     });

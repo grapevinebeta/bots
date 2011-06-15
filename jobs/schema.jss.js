@@ -12,36 +12,55 @@ var ENV = process.env.NODE_ENV;
 var config = require("../config/auto").config[ENV];
 var schemas = require("../config/schemas").schemas;
 mongoose.connect(config.mongodb);
-var cityhash = require("./../modules/cityhash.node");
 for (var schema in schemas) {
     mongoose.model(schema, schemas[schema]);
 }
+//
+function e(destination, source) {
+    for (var k in source) {
+        if (source.hasOwnProperty(k)) {
+            destination[k] = source[k];
+        }
+    }
+    return destination;
+}
 
+var BaseJob = new nodeio.Job();
 
-var Mixin = {};
+var Job = BaseJob.prototype;
+Job._more = true;
 
+Job._comments = [];
 
-Mixin._more = true;
+Job._rating = {};
 
-Mixin._comments = [];
+Job._site = null;
 
-Mixin._rating = {};
-
-Mixin._site = null;
-
-Mixin.logger = require('log4js')().getLogger();
+Job.logger = require('log4js')().getLogger();
 /**
  * @mongoose
  */
 
-Mixin._db = mongoose;
+Job._db = mongoose;
+Job.run = function(url) {
 
+    var self = this;
+    var comments = [];
+    this._currentURL = url;
+    this._fetchLastHash(function(hash) {
+        this.debug("fetchLastHash.complete");
+        this._lastHash = hash;
+        this._get(1);
+    }, this);
+
+
+}
 /**
  * Fetchs last Comment.uuid that was processed
  * @param callback
  * @param scope
  */
-Mixin._fetchLastHash = function(callback, scope) {
+Job._fetchLastHash = function(callback, scope) {
     var Comment = this._db.model("Comment");
     this.logger.debug("fetchLashHash.start");
     Comment.findOne({site:this._site}, {uuid:1}, function(err, uuid) {
@@ -52,7 +71,7 @@ Mixin._fetchLastHash = function(callback, scope) {
             });
 }
 
-Mixin.createDefaultRating = function() {
+Job.createDefaultRating = function() {
     var Rating = this._db.model("Rating");
     var doc = new Rating();
     doc.site = this._site;
@@ -65,7 +84,7 @@ Mixin.createDefaultRating = function() {
  * @param callback
  * @param scope
  */
-Mixin._get = function(page, callback, scope) {
+Job._get = function(page, callback, scope) {
     var self = this;
     this.getHtml(this._page(page), function() {
         var args = Array.splice(arguments);
@@ -76,14 +95,14 @@ Mixin._get = function(page, callback, scope) {
     });
 }
 
-Mixin._parseHandler = function(page, err, $, data, headers) {
+Job._parseHandler = function(page, err, $, data, headers) {
     if (page == 1) {
         this._rating = this._parseRating($, data);
 
         this._comments = this._parseComments($, data);
 
         var slurp = function() {
-            if (this._more) {
+            if (this.more) {
                 this._get(++page, slurp, this);
             } else {
                 this._save();
@@ -100,56 +119,15 @@ Mixin._parseHandler = function(page, err, $, data, headers) {
 
 }
 
-Mixin._parseRating = function($, data) {
+Job._parseRating = function($, data) {
 
 }
 
-Mixin._parseComments = function($, data) {
+Job._parseComments = function($, data) {
 
 }
 
-Mixin._page = function(page) {
+Job._page = function(page) {
 
 }
-Mixin._hash = function(obj) {
-    var str = null;
-    if (obj instanceof this._db.model("Comment")) {
-        str = [obj.site,obj.date,obj.identity].join("|") // hash from site.host|comment.date|comment.commiter - indexed
-
-    }
-    return cityhash.hash64(str, "cideas", "grapevine");
-}
-Mixin.check = function(obj) {
-    obj.uuid = this._hash(obj);
-    if (obj.uuid != this._lastHash) {
-        return true;
-    }
-    return this._more = false;
-
-
-}
-
-exports.mixin = Mixin;
-
-exports.job = new nodeio.Job({
-    run:function(url) {
-        // since node.io only copies the core functions when
-        // forking an job instance we must mixin the methods
-        if (!this.mixin) {
-            nodeio.utils.put(this, Mixin);
-            this.mixin = true;
-        }
-        var self = this;
-        this._more = true;
-
-        this._currentURL = url;
-        this._fetchLastHash(function(hash) {
-            this.debug("fetchLastHash.complete");
-            this._lastHash = hash;
-            this._get(1);
-        }, this);
-    }
-});
-
-//console.log(Job.prototype);
-
+exports.job = BaseJob;
