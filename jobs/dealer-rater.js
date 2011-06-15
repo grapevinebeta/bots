@@ -7,7 +7,7 @@
  */
 
 var METRICS = {
-    1:"id",
+
     2:"customer_service",
     3:"quality_of_work",
     4:"friendless",
@@ -20,50 +20,60 @@ var Base = require('base');
 
 
 var Job = exports.job = Base.job.extend({
-    input: ["http://www.dealerrater.com/dealer/Best-Chevrolet-review-1698/"]
+    input: ["http://www.dealerrater.com/dealer/Tom-Williams-BMW-review-187/"]
 
 });
 
+Base.mixin._site = "dealerrater.com";
 Base.mixin._parseRating = function($, data) {
+
     var doc = this.createDefaultRating();
 
 
     doc.score = $("span.average").text;
 
-    rating_doc.rating = $("span.average").text;
-    rating_doc.count = $("span.count").text;
+    doc.rating = $("span.average").text;
+    doc.count = $("span.count").text;
+    this.debug(doc);
     return doc;
 }
 /**
  * @inherit
  *
  */
-Base.mixin._parseComments = function($, data) {
+Base.mixin._parseComments = function($, data, page) {
     var comments = [];
     var self = this;
-    $("div.hreview").each(function(div) {
-        if (self.more()) {
-            var comment = {
-                date:new Date($("span.value-title", div).attribs.title),
-                content:$("span.description", div).text,
-                metrics:[]
-            };
-            var scores = $('.userReviewTopRight script', div).text;
+    if (page != 1) {
+        $("div.hreview");
+    }
+    [].concat($("div.hreview")).forEach(function(div) {
+        if (self._more) {
+            var comment = self.createDefaultComment();
 
-
-            var matches = scores.match(RATING_REGX);
-            for (var i in METRICS) {
-                comment.metrics[METRICS[i]] = matches[i];
-            }
-            var matches = scores.match(/rating-([0-9]+).png/);
-            comment.score = matches[1];
+            comment.timestamp = new Date($("span.value-title", div).attribs.title);
+            comment.content = $("span.description", div).text;
+            comment.identity = $(".reviewer", div).text;
             if (self.check(comment)) {
+
+                // console.log( $('.userReviewTopRight span', div).innerHTML);
+                var matches = $('.userReviewTopRight script', div).text.match(RATING_REGX);
+                for (var i in METRICS) {
+                    comment.metrics.push(self.metric(METRICS[i], matches[i]));
+                }
+
+                var matches = $('.userReviewTopRight img', div).attribs.src.match(/rating-([0-9]+).png/);
+                // self.debug(matches);
+                comment.score = matches[1];
+
                 comments.push(comment);
+
             }
         }
 
 
     });
+    // this.debug(comments);
     return comments;
 }
 /**
@@ -73,6 +83,18 @@ Base.mixin._parseComments = function($, data) {
 Base.mixin._page = function(page) {
     return page == 1 ? this._currentURL : this._currentURL + "page" + page;
 }
+Base.mixin._hasMore = function($, data) {
+    try {
+
+        return $('h3 a').attribs.href.match(new RegExp("\/page" + (this._currentPage + 1) + "\/")) ? true : false;
+
+    } catch(e) {
+        return false;
+    }
+
+
+}
+
 
 
 
