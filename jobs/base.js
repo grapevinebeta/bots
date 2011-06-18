@@ -17,6 +17,8 @@ var cityhash = require("./../modules/cityhash.node");
 for (var schema in schemas) {
     mongoose.model(schema, schemas[schema]);
 }
+var KeywordDensity = require("../modules/keyworddensity").KeywordDensity
+var density = new KeywordDensity();
 
 
 var Mixin = {};
@@ -57,7 +59,14 @@ Mixin._fetchLastHash = function(callback, scope) {
 
             });
 }
-
+Mixin.density = function(text, level) {
+    var hash = density.getDensity(text, level || 2);
+    var words = [];
+    for (word in hash) {
+        words.push({word:word,count:hash[word]});
+    }
+    return words;
+}
 Mixin.createDefaultRating = function() {
     var Rating = this._db.model("SiteRating");
     var doc = new Rating();
@@ -107,7 +116,7 @@ Mixin._parseHandler = function(page, err, $, data, headers) {
     if (page == 1) {
         this._rating = this._parseRating($, data);
 
-        this._comments = this._parseComments($, data, page);
+        this._parseComments($, data, page);
 
         var slurp = function() {
             if (this._more && this._hasMore($, data)) {
@@ -123,7 +132,7 @@ Mixin._parseHandler = function(page, err, $, data, headers) {
 
     }
     else {
-        this._comments.concat(this._parseComments($, data, page));
+        this._parseComments($, data, page);
     }
 
 
@@ -146,13 +155,32 @@ Mixin._page = function(page) {
 Mixin._save = function() {
 
 
-    for (var i in this._comments) {
-        this._comments[i].save();
+    var i = 0;
+    var len = this._comments.length;
+    var self = this;
+    var slurp = function() {
+        if (i < len) {
+            console.log("saving");
+            self._comments[i++].save(saved);
+        } else {
+            finished();
+        }
     }
+    var saved = function(err) {
+        slurp()
+    }
+    var finished = function() {
+        console.log("saved");
+        self._rating.save(function(err) {
+            self._comments = [];
+            self._rating = null;
+            self.emit("finished :" + self._currentURL);
+        });
 
-    this._rating.save();
-    this._comments = [];
-    this.emit("finished :" + this._currentURL);
+    }
+    slurp();
+
+
 }
 Mixin._hash = function(obj) {
     var str = null;
@@ -180,6 +208,10 @@ Mixin.check = function(obj) {
 exports.mixin = Mixin;
 
 exports.job = new nodeio.Job({
+    init:function() {
+
+
+    },
     run:function(url) {
         // since node.io only copies the core functions when
         // forking an job instance we must mixin the methods
@@ -189,6 +221,7 @@ exports.job = new nodeio.Job({
         }
         var self = this;
         this._more = true;
+
 
         this._currentURL = url;
         this._fetchLastHash(function(hash) {

@@ -53,6 +53,14 @@ Base.mixin._parseComments = function($, data, page) {
 
             comment.timestamp = new Date($("span.value-title", div).attribs.title);
             comment.content = $("span.description", div).text;
+
+
+            //console.log(self.density(comment.content, 2));
+            var d = self.density(comment.content, 2)
+            for (var i in d) {
+
+                comment.keywords.push(d[i]);
+            }
             comment.identity = $(".reviewer", div).text;
             if (self.check(comment)) {
 
@@ -66,15 +74,16 @@ Base.mixin._parseComments = function($, data, page) {
                 // self.debug(matches);
                 comment.score = matches[1];
 
-                comments.push(comment);
+
+                self._comments.push(comment);
 
             }
         }
 
 
     });
-    // this.debug(comments);
-    return comments;
+
+    
 }
 /**
  * @inherit
