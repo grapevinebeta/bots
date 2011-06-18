@@ -5,12 +5,12 @@
  * Time: 12:26 PM
  * To change this template use File | Settings | File Templates.
  */
-function mix(o){
+function mix(o) {
     //Create o={} if not an object
     if (typeof o !== 'object') o = {};
 
-    var obj = Array.prototype.slice.call(arguments,1),
-        i = 0, l = obj.length;
+    var obj = Array.prototype.slice.call(arguments, 1),
+            i = 0, l = obj.length;
 
     //Iterate over each subsequent object and copy properties into o
     for (; i < l; i++) {
@@ -26,21 +26,26 @@ function mix(o){
 var mongoose = require('mongoose');
 var Schema = mongoose.Schema
         , ObjectId = Schema.ObjectId;
-
+var KeywordDensity = new Schema({
+    word:{type:String,index:true},
+    value:Number
+})
 var Mixin = {
     location_id:{type:Number,index:true},
     site:{type:String,index:true},
     status:String,
     uuid:String , // hash from site.host|comment.date|comment.commiter - indexed
     timestamp:Date,
-    keywords:{type:[String],index:true},
+    keywords:[KeywordDensity] ,
     tags:[],
     notes:String,
     content:String,
     title:String,
     category:String,
     link:String
+
 }
+
 var RatingMetricScore = new Schema({
     metric:String,
     value:Number
@@ -70,7 +75,8 @@ exports.schemas = {
     RatingMetricScore:RatingMetricScore,
     SiteRating:SiteRating,
     Comment:Comment,
-    Social:Social
+    Social:Social,
+    KeywordDensity:KeywordDensity
 };
 
 
