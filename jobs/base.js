@@ -5,6 +5,8 @@
  * Time: 10:43 AM
  * To change this template use File | Settings | File Templates.
  */
+
+require.paths.unshift("/usr/local/lib/node_modules");
 console.log(require.paths);
 var nodeio = require('node.io');
 
@@ -59,13 +61,13 @@ Mixin._fetchLastHash = function(callback, scope) {
 
             });
 }
-Mixin.density = function(text, level) {
+Mixin.density = function(comment, text, level) {
     var hash = density.getDensity(text, level || 2);
     var words = [];
     for (word in hash) {
-        words.push({word:word,count:hash[word]});
+        comment.keywords.push({word:word,count:hash[word]});
     }
-    return words;
+
 }
 Mixin.createDefaultRating = function() {
     var Rating = this._db.model("SiteRating");
@@ -100,7 +102,9 @@ Mixin._get = function(page, callback, scope) {
     this.getHtml(this._page(page), function(err) {
         var args = Array.prototype.slice.call(arguments);
         if (err) {
+            throw error;
             console.log(err);
+            return;
         }
         self._currentPage = parseInt(page);
         args.unshift(page);
@@ -116,7 +120,7 @@ Mixin._parseHandler = function(page, err, $, data, headers) {
     if (page == 1) {
         this._rating = this._parseRating($, data);
 
-        this._parseComments($, data, page);
+        this._comments = this._parseComments($, data, page);
 
         var slurp = function() {
             if (this._more && this._hasMore($, data)) {
@@ -132,7 +136,7 @@ Mixin._parseHandler = function(page, err, $, data, headers) {
 
     }
     else {
-        this._parseComments($, data, page);
+        this._comments = this._comments.concat(this._parseComments($, data, page))
     }
 
 
@@ -192,7 +196,12 @@ Mixin._hash = function(obj) {
     return cityhash.hash64(str, "cideas", "grapevine").value;
 }
 Mixin.debug = function() {
-    this.logger.debug.apply(this.logger, Array.prototype.slice.call(arguments));
+    if (this.options.debug) {
+        this.logger.debug.apply(this.logger, Array.prototype.slice.call(arguments));
+    }
+}
+Mixin.transform = function(str) {
+    return str.toLowerCase().replace(/[^a-z]+/g, "_");
 }
 Mixin.check = function(obj) {
     obj.uuid = this._hash(obj);
@@ -208,11 +217,9 @@ Mixin.check = function(obj) {
 exports.mixin = Mixin;
 
 exports.job = new nodeio.Job({
-    init:function() {
 
-
-    },
     run:function(url) {
+
         // since node.io only copies the core functions when
         // forking an job instance we must mixin the methods
         if (!this.mixin) {
@@ -223,6 +230,7 @@ exports.job = new nodeio.Job({
         this._more = true;
 
 
+        this.debug(url);
         this._currentURL = url;
         this._fetchLastHash(function(hash) {
             this.debug("fetchLastHash.complete");
@@ -231,6 +239,7 @@ exports.job = new nodeio.Job({
         }, this);
     }
 });
+
 
 //console.log(Job.prototype);
 

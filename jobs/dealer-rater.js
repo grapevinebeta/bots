@@ -19,7 +19,7 @@ var RATING_REGX = /ratings([0-9]+)',\s([0-9]+),\s([0-9]+),\s([0-9]+),\s([0-9]+),
 var Base = require('base');
 
 
-var Job = exports.job = Base.job.extend({
+var Job = exports.job = Base.job.extend({debug:false},{
     input: ["http://www.dealerrater.com/dealer/Tom-Williams-BMW-review-187/"]
 
 });
@@ -27,10 +27,12 @@ var Job = exports.job = Base.job.extend({
 Base.mixin._site = "dealerrater.com";
 Base.mixin._parseRating = function($, data) {
 
+    
     var doc = this.createDefaultRating();
 
 
-    doc.score = $("span.average").text;
+    // site is on a out of 10 scale, we put it to a 5 point scale
+    doc.score = parseInt($("span.average").text,10)/2;
 
     doc.rating = $("span.average").text;
     doc.count = $("span.count").text;

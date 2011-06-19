@@ -24,6 +24,8 @@ Density.prototype.init = function() {
 
     this._words = [];
     for (i in words) {
+
+
         this._words.push(this.trim(words[i]));
     }
 }
@@ -35,7 +37,8 @@ Density.prototype.compress = function(text) {
     //return text.replace(/\/\/.*?\n/g, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/[ \f\r\t\v\u00A0\u2028\u2029]+/g, ' ').replace(/\s*\n+/g, '\n').replace(/^\s+/gm, '').replace(/\s*$/gm, '');
 }
 Density.prototype.textOnly = function(text) {
-    text = text.replace(/&[#0-9a-z]+/gi, '');
+    text = text.toLowerCase();
+    text = text.replace(/&[#0-9a-z]+/g, '');
     var search = [/<script[^>]*?>.*?<\/script>/g,  // Strip out javascript
         /<style[^>]*?>.*?<\/style>/g,
         /<[/!]*?[^<>]*?>/g,          // Strip out HTML tags
@@ -65,7 +68,6 @@ Density.prototype.textOnly = function(text) {
         String.fromCharCode(169),
         " "];
 
-    text = text.toLowerCase();
 
     text = text.replace(/\r|\n/g, " ")
     text = this.replace(text, search, replace);
@@ -76,12 +78,13 @@ Density.prototype.textOnly = function(text) {
     text = this.replace(text, search, replace);
 
     text = this.html_entity_decode(text);
-    text = text.replace(/&[#0-9a-z]+/g, ' ');
-    text = text.replace(/[^a-z]+/g, " ");
+    text = text.replace(/&[#0-9a-z]+/g, '  ');
+    text = text.replace(/[^a-z]+/g, "  ");
     text = text.replace(/[\W]+/g, "  ");
 
     text = this.compress(text);
     var buffer;
+    //TODO fix some cases for not finding stopwords ie "i" in mydealreport job
     for (i in this._words) {
         text = text.replace(new RegExp(" " + this._words[i] + " ", "g"), " ");
     }
