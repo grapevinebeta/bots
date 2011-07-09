@@ -19,20 +19,20 @@ var RATING_REGX = /ratings([0-9]+)',\s([0-9]+),\s([0-9]+),\s([0-9]+),\s([0-9]+),
 var Base = require('base');
 
 
-var Job = exports.job = Base.job.extend({debug:false},{
-    input: ["http://www.dealerrater.com/dealer/Tom-Williams-BMW-review-187/"]
+var Job = exports.job = Base.job.extend({debug:false}, {
+            input: ["http://www.dealerrater.com/dealer/Tom-Williams-BMW-review-187/"]
 
-});
+        });
 
 Base.mixin._site = "dealerrater.com";
 Base.mixin._parseRating = function($, data) {
 
-    
+
     var doc = this.createDefaultRating();
 
 
     // site is on a out of 10 scale, we put it to a 5 point scale
-    doc.score = parseInt($("span.average").text,10)/2;
+    doc.score = parseInt($("span.average").text, 10) / 2;
 
     doc.rating = $("span.average").text;
     doc.count = $("span.count").text;
@@ -57,15 +57,9 @@ Base.mixin._parseComments = function($, data, page) {
             comment.content = $("span.description", div).text;
 
 
-            //console.log(self.density(comment.content, 2));
-            var d = self.density(comment.content, 2)
-            for (var i in d) {
-
-                comment.keywords.push(d[i]);
-            }
             comment.identity = $(".reviewer", div).text;
             if (self.check(comment)) {
-
+                self.density(comment)
                 // console.log( $('.userReviewTopRight span', div).innerHTML);
                 var matches = $('.userReviewTopRight script', div).text.match(RATING_REGX);
                 for (var i in METRICS) {
@@ -85,7 +79,7 @@ Base.mixin._parseComments = function($, data, page) {
 
     });
 
-    
+
 }
 /**
  * @inherit

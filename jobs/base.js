@@ -19,6 +19,7 @@ var cityhash = require("./../modules/cityhash.node");
 for (var schema in schemas) {
     mongoose.model(schema, schemas[schema]);
 }
+var jquery = require("jquery").create();
 var KeywordDensity = require("../modules/keyworddensity").KeywordDensity
 var density = new KeywordDensity();
 
@@ -61,13 +62,21 @@ Mixin._fetchLastHash = function(callback, scope) {
 
             });
 }
-Mixin.density = function(comment, text, level) {
-    var hash = density.getDensity(text, level || 2);
-    var words = [];
+/**
+ *
+ * @param {Comment} comment
+ * @param level
+ */
+Mixin.density = function(comment, level) {
+    var hash = this._density(comment.contet, level);
+
     for (word in hash) {
         comment.keywords.push({word:word,count:hash[word]});
     }
 
+}
+Mixin._density = function(content, level) {
+    return density.getDensity(content, level || 2);
 }
 Mixin.createDefaultRating = function() {
     var Rating = this._db.model("SiteRating");
@@ -116,7 +125,7 @@ Mixin._get = function(page, callback, scope) {
 }
 
 Mixin._parseHandler = function(page, err, $, data, headers) {
-    this.debug("Getting page : " + page);
+    $ = jquery;
     if (page == 1) {
         this._rating = this._parseRating($, data);
 

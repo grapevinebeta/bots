@@ -60,7 +60,7 @@ Base.mixin._parseRating = function($, data) {
 Base.mixin._parseComments = function($, data, page) {
     var comments = [];
     var self = this;
-    $ = require("jquery").create();
+
     var content;
 
     //TODO add error checking
@@ -124,15 +124,17 @@ Base.mixin._parseComments = function($, data, page) {
 
             } else if (isComment) {
                 comment.content = self.filter(content).trim();
-                self.density(comment, comment.content);
+
 
             }
 
 
         });
-         console.log(comment);
+
         if (self.check(comment)) {
-            console.log(comment);
+            if (isComment) {
+                self.density(comment);
+            }
             comments.push(comment);
             console.log(comment);
         }
