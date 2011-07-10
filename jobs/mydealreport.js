@@ -65,7 +65,7 @@ Base.mixin._parseComments = function($, data, page) {
 
     //TODO add error checking
     var isComment = false;
-    $("tr div.datafullreport", data).each(function() {
+    $("tr div.datafullreport").each(function() {
         if (!self._more)return;
         var comment = self.createDefaultComment();
         $("div", this).each(function(i, div) {
@@ -109,7 +109,10 @@ Base.mixin._parseComments = function($, data, page) {
                             done = true;
                         }
                         if (done) {
-                            comment.metrics.push(self.metric(metric_key, metric_value));
+                            comment.metrics.push(
+                                    {metric:metric_key,
+                                        value:metric_value
+                                    });
                         }
 
 
@@ -120,7 +123,7 @@ Base.mixin._parseComments = function($, data, page) {
                 comment.identity = self.filter($(div).text().replace("User:", "")).trim();
             } else if (content.indexOf("Date:") != -1) {
 
-                comment.timestamp = new Date(self.filter($(div).text().replace("Date:")).trim());
+                comment.date = new Date(self.filter($(div).text().replace("Date:")).trim());
 
             } else if (isComment) {
                 comment.content = self.filter(content).trim();
@@ -132,14 +135,12 @@ Base.mixin._parseComments = function($, data, page) {
         });
 
         if (self.check(comment)) {
-            if (isComment) {
-                self.density(comment);
-            }
+          
             comments.push(comment);
-            console.log(comment);
+
         }
 
-        console.log("---END----")
+
     });
     return comments;
 

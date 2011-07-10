@@ -19,8 +19,9 @@ var cityhash = require("./../modules/cityhash.node");
 for (var schema in schemas) {
     mongoose.model(schema, schemas[schema]);
 }
-var jsdom = require("jsdom");
-
+var jquery = require("jquery").create();
+var KeywordDensity = require("../modules/keyworddensity").KeywordDensity
+var density = new KeywordDensity();
 
 
 var Mixin = {};
@@ -67,15 +68,15 @@ Mixin._fetchLastHash = function(callback, scope) {
  * @param level
  */
 Mixin.density = function(comment, level) {
-   /* var hash = this._density(comment.contet, level);
+    var hash = this._density(comment.contet, level);
 
     for (word in hash) {
         comment.keywords.push({word:word,count:hash[word]});
-    }*/
+    }
 
 }
 Mixin._density = function(content, level) {
-   // return density.getDensity(content, level || 2);
+    return density.getDensity(content, level || 2);
 }
 Mixin.createDefaultRating = function() {
     var Rating = this._db.model("SiteRating");
@@ -84,31 +85,9 @@ Mixin.createDefaultRating = function() {
     doc.location_id = this._locationId;
     return doc;
 }
-/**
- * @return DefaultComment
- */
 Mixin.createDefaultComment = function() {
-
-    var doc = {
-        //month-day-year-location-site-hash
-        _id:null, // hash from site.host|comment.date|comment.commiter - indexed
-        score:null,
-        identity:null,
-        metrics:[],
-        location_id:null,
-        site:'',
-        status:'',
-        date:null,
-        keywords:[] ,
-        tags:[],
-        notes:'',
-        content:'',
-        title:'',
-        category:'',
-        link:''
-
-    }
-
+    var Comment = this._db.model("Comment");
+    var doc = new Comment();
     doc.site = this._site;
     doc.location_id = this._locationId;
     return doc;
@@ -129,34 +108,24 @@ Mixin.metric = function(metric, value) {
  */
 Mixin._get = function(page, callback, scope) {
     var self = this;
-    this.get(this._page(page), function(err, data) {
+    this.getHtml(this._page(page), function(err) {
         var args = Array.prototype.slice.call(arguments);
         if (err) {
             throw error;
             console.log(err);
             return;
         }
-        jsdom.env({
-            html: data,
-            scripts: [
-                'http://code.jquery.com/jquery-1.5.min.js'
-            ]
-        }, function (err, window) {
+        self._currentPage = parseInt(page);
+        args.unshift(page);
 
-            self._currentPage = parseInt(page);
-            args.unshift(page);
-
-            self._parseHandler.apply(self, [page,window.jQuery,data]);
-            if (callback != null)
-                callback.apply(scope)
-
-        });
-
+        self._parseHandler.apply(self, args);
+        if (callback != null)
+            callback.apply(scope)
     });
 }
 
-Mixin._parseHandler = function(page, $, data) {
-
+Mixin._parseHandler = function(page, err, $, data, headers) {
+    $ = jquery;
     if (page == 1) {
         this._rating = this._parseRating($, data);
 
@@ -228,30 +197,24 @@ Mixin._save = function() {
 }
 Mixin._hash = function(obj) {
     var str = null;
-    var month = obj.date.getMonth() + 1;
-    if (month < 10) {
-        month = "0" + month;
+    if (obj instanceof this._db.model("Comment")) {
+
+        str = [obj.site,obj.date,obj.identity].join("|") // hash from site.host|comment.date|comment.commiter - indexed
+
     }
-    var prefix = [month,obj.date.getDate(),obj.date.getFullYear(),obj.locationId,obj.site].join("-");
-
-    var str = prefix + [obj.site,obj.date,obj.identity].join("|");// hash from site.host|comment.date|comment.commiter - indexed
-
-
-    var hash = cityhash.hash64(str, "cideas", "grapevine").value;
-    return prefix + ":" + hash;
+    return cityhash.hash64(str, "cideas", "grapevine").value;
 }
 Mixin.debug = function() {
     if (this.options.debug) {
-        console.log(Array.prototype.slice.call(arguments));
-        // this.logger.debug.apply(this.logger, Array.prototype.slice.call(arguments));
+        //  this.logger.debug.apply(this.logger, Array.prototype.slice.call(arguments));
     }
 }
 Mixin.transform = function(str) {
     return str.toLowerCase().replace(/[^a-z]+/g, "_");
 }
 Mixin.check = function(obj) {
-    obj._id = this._hash(obj);
-    if (obj._id != this._lastHash) {
+    obj.uuid = this._hash(obj);
+    if (obj.uuid != this._lastHash) {
         return true;
     }
     this.debug("finished!!!");
@@ -260,35 +223,28 @@ Mixin.check = function(obj) {
 
 }
 
+Mixin.run = function(url) {
+    var self = this;
+    this._more = true;
 
-exports.methods = function() {
-    return nodeio.utils.put({}, Mixin);
+    console.log(this);
+    this.debug(url);
+    this._currentURL = url;
+    this._fetchLastHash(function(hash) {
+        this.debug("fetchLastHash.complete");
+        this._lastHash = hash;
+        this._get(1);
+    }, this);
 }
+
+exports.mixin = Mixin;
+
 exports.job = new nodeio.Job({
-
-
-    run:function(url) {
-
-
-        // since node.io only copies the core functions when
-        // forking an job instance we must mixin the methods
-        if (!this.mixin) {
-            nodeio.utils.put(this, this.options.methods);
-            this.mixin = true;
-        }
-        var self = this;
-        this._more = true;
-
-
-        this.debug(url);
-        this._currentURL = url;
-        this._fetchLastHash(function(hash) {
-            this.debug("fetchLastHash.complete");
-            this._lastHash = hash;
-            this._get(1);
-        }, this);
+    run:function() {
+        
     }
 });
-
-//console.log(Job.prototype);
+exports.mix = function(a) {
+    return  nodeio.utils.put({}, a, Mixin);
+}
 
