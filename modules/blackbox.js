@@ -9,7 +9,7 @@ this.title = "Eat everything tell nothing";
 this.name = "blackbox";
 this.version = "0.1.0";
 this.endpoint = "http://localhost:8080";
-var ENV = process.env.NODE_ENV;
+var ENV = process.env.NODE_ENV || "dev";
 
 var density = require("../modules/keyworddensity");
 density = new density.KeywordDensity();
@@ -20,19 +20,24 @@ var CommentAggregator = new Aggregator("comment");
 var RatingAggregator = new Aggregator("rating");
 
 
-/*
-
- var mongoose = require('mongoose')
+var mongoose = require('mongoose')
 
 
- var config = require("../config/auto").config[ENV];
- var schemas = require("../config/schemas").schemas;
+var CONFIG = require("../config/auto").config[ENV];
+var schemas = require("../config/schemas").schemas;
 
 
- for (var schema in schemas) {
- mongoose.model(schema, schemas[schema]);
- }
- var db = mongoose.connect(config.mongodb);*/
+for (var schema in schemas) {
+    mongoose.model(schema, schemas[schema]);
+}
+var db = mongoose.connect(CONFIG.mongodb);
+
+var Queue = db.model("Queue");
+var q = new Queue();
+q.url = "http://www.dealerrater.com/dealer/Tom-Williams-BMW-review-187/";
+q.site = "dealrrater.com";
+//q.save();
+
 exports.reviews = function(options, callback) {
 
     CommentAggregator.reset();
@@ -77,3 +82,24 @@ exports.social = function(options, callback) {
 }
 
 exports.social.description = "nasty social...";
+
+exports.queue = function(options, callback) {
+
+    var QueueClass = db.model("Queue");
+    var queue = new QueueClass();
+
+    queue.collection.findAndModify({processed:false,site:options.site},
+            [
+                ["priority","ascending"]
+
+            ],
+            {"$set":{processed:true,started:new Date()}},
+
+            function(err, doc) {
+                callback({job:doc});
+            }
+
+    )
+
+
+}

@@ -49,10 +49,19 @@ var RatingMetricScore = new Schema({
     value:Number
 
 });
+var Queue = new Schema({
+    processed:{type:Boolean,"default":false},
+    site:String,
+    priority:Number,
+    started:Date,
+    locationId:Number,
+    url:String
+});
+Queue.index({processed:1,site:-1});
 var SiteRating = new Schema({
     location_id:{type:Number,index:true},
     site:{type:String,index:true},
-    date:{type:Date,defaut:Date.now},
+    date:{type:Date,"default":Date.now},
     metrics:[RatingMetricScore],
     score:Number
 });
@@ -86,7 +95,8 @@ exports.schemas = {
     SiteRating:SiteRating,
     Comment:Comment,
     Social:Social,
-    KeywordDensity:KeywordDensity
+    KeywordDensity:KeywordDensity,
+    Queue:Queue
 };
 
 

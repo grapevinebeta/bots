@@ -21,7 +21,7 @@ var core = require('base');
 
 
 var methods = core.methods();
-methods._site = "dealerrater.com";
+
 methods._parseRating = function($, data) {
 
 
@@ -104,7 +104,7 @@ methods._hasMore = function($, data) {
 
 }
 
-exports.job = core.job.extend({debug:false,methods:methods}, {
+exports.job = core.job.extend({debug:false,site:"dealerrater.com",methods:methods}, {
     input: ["http://www.dealerrater.com/dealer/Tom-Williams-BMW-review-187/"]
 
 });

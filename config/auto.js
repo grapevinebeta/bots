@@ -14,7 +14,7 @@ exports.config = {
 
     },
     prod:{
-        mongodb:"mongodb://50.57.109.127/grapevine_auto",
+        mongodb:"mongodb://50.57.109.127/grapevine_auto"
 
     }
 

@@ -19,7 +19,7 @@ var jsdom = require("jsdom");
 
 
 var Mixin = {};
-
+var request = require('request');
 
 Mixin._more = true;
 
@@ -27,7 +27,6 @@ Mixin._comments = [];
 
 Mixin._rating = {};
 
-Mixin._site = null;
 
 //Mixin.logger = require('log4js')().getLogger();
 /**
@@ -45,8 +44,9 @@ Mixin._fetchLastHash = function(callback, scope) {
     var Comment = this._db.model("Comment");
     this.debug("fetchLashHash.start");
     var self = this;
-    this.debug(Comment);
-    Comment.findOne({site:this._site}, {uuid:1}, function(err, c) {
+
+    var regex = new Regexp(["^[0-9]+",this.locationId(),this.site(true)].join("-"));
+    Comment.findOne({"_id":regex}, {"_id":1}, function(err, c) {
         // TODO error checking
         c = c || {uuid:""};
 
@@ -75,8 +75,8 @@ Mixin._density = function(content, level) {
 Mixin.createDefaultRating = function() {
     var Rating = this._db.model("SiteRating");
     var doc = new Rating();
-    doc.site = this._site;
-    doc.location_id = this._locationId;
+    doc.site = this.site();
+    doc.location_id = this.locationId;
     return doc;
 }
 /**
@@ -104,8 +104,8 @@ Mixin.createDefaultComment = function() {
 
     }
 
-    doc.site = this._site;
-    doc.location_id = this._locationId;
+    doc.site = this.site();
+    doc.location_id = this.locationId();
     return doc;
 }
 Mixin.metric = function(metric, value) {
@@ -197,17 +197,10 @@ Mixin._save = function() {
     var i = 0;
     var len = this._comments.length;
     var self = this;
-    var options = {
-        host:CONFIG.blackbox,
-        port:80,
-        path:"/reviews",
-        method:"POST"
 
-    }
-    var request = require('request');
     request({
         method:"POST",
-        uri:CONFIG.blackbox,
+        uri:CONFIG.blackbox + "/reviews",
         body:{
             locationId:this._locationId,
             site:this._site,
@@ -256,6 +249,15 @@ Mixin.check = function(obj) {
 
 
 }
+Mixin.locationId = function(id) {
+    if (id) {
+        this._locationId = id;
+    }
+    return this._locationId;
+}
+Mixin.site = function(domainOnly) {
+    return this.options.site;
+}
 
 
 exports.methods = function() {
@@ -263,6 +265,22 @@ exports.methods = function() {
 }
 exports.job = new nodeio.Job({
 
+
+    input:function(start, num, callback) {
+        var self = this;
+        request({
+            method:"GET",
+            uri:CONFIG.blackbox + "/queue",
+            body:{site:this.options.site},
+            json:true
+        }, function(err, response, body) {
+            if (body && body.hasOwnProperty("url")) {
+                self.locationId(body.location_id);
+
+                callback(body.url)
+            }
+        });
+    },
 
     run:function(url) {
 
