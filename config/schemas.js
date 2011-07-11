@@ -31,11 +31,9 @@ var KeywordDensity = new Schema({
     value:Number
 })
 var Mixin = {
-    location_id:{type:Number,index:true},
-    site:{type:String,index:true},
+    loc:{type:Number,index:true},
     status:String,
-    uuid:String , // hash from site.host|comment.date|comment.commiter - indexed
-    timestamp:Date,
+    date:Date,
     keywords:[KeywordDensity] ,
     tags:[],
     notes:String,
@@ -49,6 +47,7 @@ var Mixin = {
 var RatingMetricScore = new Schema({
     metric:String,
     value:Number
+
 });
 var SiteRating = new Schema({
     location_id:{type:Number,index:true},
@@ -71,6 +70,17 @@ var Social = new Schema(mix({
     metric:String
 }, Mixin));
 
+var Metrics = new Schema({
+
+    name:String,
+    period:String,
+    start_date:Date,
+    aggregates:{}
+
+
+});
+Metrics.index({name:1,period:1,start_date:1});
+
 exports.schemas = {
     RatingMetricScore:RatingMetricScore,
     SiteRating:SiteRating,
@@ -78,5 +88,6 @@ exports.schemas = {
     Social:Social,
     KeywordDensity:KeywordDensity
 };
+
 
 

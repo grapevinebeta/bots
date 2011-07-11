@@ -9,18 +9,13 @@
 require.paths.unshift("/usr/local/lib/node_modules");
 console.log(require.paths);
 var nodeio = require('node.io');
+var ENV = process.env.NODE_ENV || dev;
+var CONFIG = require("../config/auto")[ENV];
 
-var mongoose = require('mongoose');
-var ENV = process.env.NODE_ENV;
-var config = require("../config/auto").config[ENV];
-var schemas = require("../config/schemas").schemas;
-mongoose.connect(config.mongodb);
+
 var cityhash = require("./../modules/cityhash.node");
-for (var schema in schemas) {
-    mongoose.model(schema, schemas[schema]);
-}
-var jsdom = require("jsdom");
 
+var jsdom = require("jsdom");
 
 
 var Mixin = {};
@@ -67,15 +62,15 @@ Mixin._fetchLastHash = function(callback, scope) {
  * @param level
  */
 Mixin.density = function(comment, level) {
-   /* var hash = this._density(comment.contet, level);
+    /* var hash = this._density(comment.contet, level);
 
-    for (word in hash) {
-        comment.keywords.push({word:word,count:hash[word]});
-    }*/
+     for (word in hash) {
+     comment.keywords.push({word:word,count:hash[word]});
+     }*/
 
 }
 Mixin._density = function(content, level) {
-   // return density.getDensity(content, level || 2);
+    // return density.getDensity(content, level || 2);
 }
 Mixin.createDefaultRating = function() {
     var Rating = this._db.model("SiteRating");
@@ -202,27 +197,29 @@ Mixin._save = function() {
     var i = 0;
     var len = this._comments.length;
     var self = this;
-    var slurp = function() {
-        if (i < len) {
-            console.log("saving");
-            self._comments[i++].save(saved);
-        } else {
-            finished();
-        }
-    }
-    var saved = function(err) {
-        slurp()
-    }
-    var finished = function() {
-        console.log("saved");
-        self._rating.save(function(err) {
-            self._comments = [];
-            self._rating = null;
-            self.emit("finished :" + self._currentURL);
-        });
+    var options = {
+        host:CONFIG.blackbox,
+        port:80,
+        path:"/reviews",
+        method:"POST"
 
     }
-    slurp();
+    var request = require('request');
+    request({
+        method:"POST",
+        uri:CONFIG.blackbox,
+        body:{
+            locationId:this._locationId,
+            site:this._site,
+            rating:this._rating,
+            comments:this._comments
+        },
+        json:true
+    }, function(err, response, body) {
+        self._comments = [];
+        self._rating = null;
+        self.emit("finished :" + self._currentURL);
+    });
 
 
 }
