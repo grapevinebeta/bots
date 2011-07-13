@@ -218,6 +218,9 @@ Mixin.float = function(val) {
         val = 0;
     return val;
 }
+Mixin.trim = function(val) {
+    return this.filter(val).trim();
+}
 Mixin._save = function() {
 
 
@@ -315,6 +318,7 @@ exports.job = new nodeio.Job({
         // since node.io only copies the core functions when
         // forking an job instance we must mixin the methods
         if (!this.mixin) {
+            this.options.spoof = true;
             nodeio.utils.put(this, this.options.methods);
             this.mixin = true;
         }
