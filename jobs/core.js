@@ -33,7 +33,7 @@ Mixin._rating = {};
  * @mongoose
  */
 
-Mixin._db = mongoose;
+
 
 /**
  * Fetchs last Comment.uuid that was processed
@@ -41,20 +41,22 @@ Mixin._db = mongoose;
  * @param scope
  */
 Mixin._fetchLastHash = function(callback, scope) {
-    var Comment = this._db.model("Comment");
-    this.debug("fetchLashHash.start");
-    var self = this;
+    callback.call(scope);
 
-    var regex = new Regexp(["^[0-9]+",this.locationId(),this.site(true)].join("-"));
-    Comment.findOne({"_id":regex}, {"_id":1}, function(err, c) {
-        // TODO error checking
-        c = c || {uuid:""};
+    /*var Comment = this._db.model("Comment");
+     this.debug("fetchLashHash.start");
+     var self = this;
 
-        self.debug("LastHash for [" + self._site + "] =" + c.uuid);
+     var regex = new Regexp(["^[0-9]+",this.locationId(),this.site(true)].join("-"));
+     Comment.findOne({"_id":regex}, {"_id":1}, function(err, c) {
+     // TODO error checking
+     c = c || {uuid:""};
 
-        callback.call(scope, c.uuid);
+     self.debug("LastHash for [" + self._site + "] =" + c.uuid);
 
-    });
+     callback.call(scope, c.uuid);
+
+     });*/
 }
 /**
  *
@@ -73,25 +75,27 @@ Mixin._density = function(content, level) {
     // return density.getDensity(content, level || 2);
 }
 Mixin.createDefaultRating = function() {
-    var Rating = this._db.model("SiteRating");
-    var doc = new Rating();
-    doc.site = this.site();
-    doc.location_id = this.locationId;
-    return doc;
+    return {
+        location_id:this.locationId(),
+        site:this.site(),
+        date:Date.now(),
+        score:0
+    }
+
 }
 /**
  * @return DefaultComment
  */
 Mixin.createDefaultComment = function() {
 
-    var doc = {
+    return{
         //month-day-year-location-site-hash
         _id:null, // hash from site.host|comment.date|comment.commiter - indexed
         score:null,
         identity:null,
         metrics:[],
-        location_id:null,
-        site:'',
+        location_id:this.locationId(),
+        site:this.site(),
         status:'',
         date:null,
         keywords:[] ,
@@ -104,18 +108,8 @@ Mixin.createDefaultComment = function() {
 
     }
 
-    doc.site = this.site();
-    doc.location_id = this.locationId();
-    return doc;
 }
-Mixin.metric = function(metric, value) {
-    var RatingMetricScore = this._db.model("RatingMetricScore");
-    var doc = new RatingMetricScore();
-    doc.metric = metric;
-    doc.value = value;
-    return doc;
 
-}
 /**
  * Fetches a giving page
  * @param page
@@ -141,37 +135,50 @@ Mixin._get = function(page, callback, scope) {
             self._currentPage = parseInt(page);
             args.unshift(page);
 
-            self._parseHandler.apply(self, [page,window.jQuery,data]);
-            if (callback != null)
-                callback.apply(scope)
+            var finish = function() {
+                if (callback != null)
+                    callback.apply(scope)
+            }
+
+            self._parseHandler.apply(self, [page,window.jQuery,data,finish]);
+
 
         });
 
     });
 }
 
-Mixin._parseHandler = function(page, $, data) {
+Mixin._parseHandler = function(page, $, data, callback) {
 
+    var self = this;
     if (page == 1) {
         this._rating = this._parseRating($, data);
 
-        this._comments = this._parseComments($, data, page);
+        var begin = function(comments) {
+            self._comments = comments;
+            slurp.call(self);
+        }
+
 
         var slurp = function() {
-            if (this._more && this._hasMore($, data)) {
+            if (this._more && this._hasMore($, data, page)) {
                 this._get(++page, slurp, this);
             } else {
                 this._save();
             }
 
         }
-
-        slurp.call(this);
+        this._parseComments($, data, page, begin);
 
 
     }
     else {
-        this._comments = this._comments.concat(this._parseComments($, data, page))
+        var concat = function(comments) {
+            self._comments = self._comments.concat(comments);
+            callback();
+        }
+        this._parseComments($, data, page, concat);
+
     }
 
 
@@ -191,6 +198,20 @@ Mixin._hasMore = function($) {
 Mixin._page = function(page) {
 
 }
+Mixin.blackbox = function(method, endpoint, body, callback) {
+    request({
+        method:method,
+        uri:CONFIG.blackbox + endpoint,
+        body:body,
+        json:true
+    }, callback)
+}
+Mixin.int = function(val) {
+    val = parseInt(val, 10);
+    if (isNaN(val))
+        val = 0;
+    return val;
+}
 Mixin._save = function() {
 
 
@@ -198,21 +219,17 @@ Mixin._save = function() {
     var len = this._comments.length;
     var self = this;
 
-    request({
-        method:"POST",
-        uri:CONFIG.blackbox + "/reviews",
-        body:{
-            locationId:this._locationId,
-            site:this._site,
-            rating:this._rating,
-            comments:this._comments
-        },
-        json:true
-    }, function(err, response, body) {
-        self._comments = [];
-        self._rating = null;
-        self.emit("finished :" + self._currentURL);
-    });
+    this.blackbox("POST", "/reviews",
+            {
+                locationId:this.locationId(),
+                site:this.site(),
+                rating:this._rating,
+                comments:this._comments
+            }, function(err, response, body) {
+                self._comments = [];
+                self._rating = null;
+                self.emit("finished :" + self._currentURL);
+            })
 
 
 }
@@ -222,7 +239,11 @@ Mixin._hash = function(obj) {
     if (month < 10) {
         month = "0" + month;
     }
-    var prefix = [month,obj.date.getDate(),obj.date.getFullYear(),obj.locationId,obj.site].join("-");
+    var date = obj.date.getDate();
+    if (date < 10) {
+        date = "0" + date;
+    }
+    var prefix = [month,date,obj.date.getFullYear(),obj.locationId,obj.site].join("-");
 
     var str = prefix + [obj.site,obj.date,obj.identity].join("|");// hash from site.host|comment.date|comment.commiter - indexed
 
@@ -259,6 +280,9 @@ Mixin.site = function(domainOnly) {
     return this.options.site;
 }
 
+Mixin.more = function() {
+    return this._more;
+}
 
 exports.methods = function() {
     return nodeio.utils.put({}, Mixin);
@@ -268,18 +292,15 @@ exports.job = new nodeio.Job({
 
     input:function(start, num, callback) {
         var self = this;
-        request({
-            method:"GET",
-            uri:CONFIG.blackbox + "/queue",
-            body:{site:this.options.site},
-            json:true
-        }, function(err, response, body) {
-            if (body && body.hasOwnProperty("url")) {
-                self.locationId(body.location_id);
+        Mixin.blackbox("GET", "/queue", {site:this.options.site},
+                function(err, response, body) {
+                    if (body && body.hasOwnProperty("url")) {
+                        self.locationId(body.location_id);
 
-                callback(body.url)
-            }
-        });
+                        callback(body.url)
+                    }
+                });
+
     },
 
     run:function(url) {

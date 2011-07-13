@@ -17,7 +17,7 @@ var METRICS = {
 }
 var RATING_REGX = /ratings([0-9]+)',\s([0-9]+),\s([0-9]+),\s([0-9]+),\s([0-9]+),\s([0-9]+)/;
 
-var core = require('base');
+var core = require('../core');
 
 
 var methods = core.methods();

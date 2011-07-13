@@ -13,23 +13,17 @@ var mapping = {
     TradeInBar:"trade_in_process"
 
 }
-var Base = require('base')
+
 
 var urlparse = require("url").parse;
-var Job = Base.job;
-exports.job = Job.extend({
-    input: ["http://mydealerreport.com/fullReport.php?DealerID=6841"],
-    run:function(url) {
 
 
-        this.id = urlparse(url, true).query.DealerID;
+var core = require('../core');
 
-        Job.run.call(this, url);
-    }
 
-});
-Base.mixin._site = "mydealreport.com";
-Base.mixin._parseRating = function($, data) {
+var methods = core.methods();
+
+methods._parseRating = function($, data) {
 
 
     var doc = this.createDefaultRating();
@@ -46,7 +40,9 @@ Base.mixin._parseRating = function($, data) {
         if (mapping[metric_key]) {
             metric_key = mapping[metric_key];
             metric_value = (self.filter(matches[2]).toInt() / 100) * 5;// normalize to a 5 point scale
-            doc.metrics.push(self.metric(metric_key, metric_value));
+            doc.metrics.push({
+                metric:metric_key,
+                value:metric_value});
 
         }
 
@@ -57,7 +53,7 @@ Base.mixin._parseRating = function($, data) {
     return doc;
 }
 
-Base.mixin._parseComments = function($, data, page) {
+methods._parseComments = function($, data, page) {
     var comments = [];
     var self = this;
 
@@ -110,7 +106,8 @@ Base.mixin._parseComments = function($, data, page) {
                         }
                         if (done) {
                             comment.metrics.push(
-                                    {metric:metric_key,
+                                    {
+                                        metric:metric_key,
                                         value:metric_value
                                     });
                         }
@@ -135,7 +132,7 @@ Base.mixin._parseComments = function($, data, page) {
         });
 
         if (self.check(comment)) {
-          
+
             comments.push(comment);
 
         }
@@ -146,6 +143,22 @@ Base.mixin._parseComments = function($, data, page) {
 
 
 }
-Base.mixin._page = function(page) {
+methods._page = function(page) {
     return this._currentURL;
 }
+methods._hasMore = function($, data) {
+    // displays all comments on single page
+    return false;
+
+
+}
+
+exports.job = core.job.extend({debug:false,site:"mydealerreport.com",methods:methods}, {
+    input: ["http://mydealerreport.com/fullReport.php?DealerID=6841"],
+    run:function(url) {
+        this.id = urlparse(url, true).query.DealerID;
+
+        Job.run.call(this, url);
+    }
+
+});
