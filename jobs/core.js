@@ -219,7 +219,7 @@ Mixin.float = function(val) {
     return val;
 }
 Mixin.trim = function(val) {
-    return this.filter(val).trim();
+    return this.filter(val).trim().replace(/“|”|â€œ|â€/g, '"').replace(/\r\n/g, "\n");
 }
 Mixin._save = function() {
 
