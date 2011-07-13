@@ -212,6 +212,12 @@ Mixin.int = function(val) {
         val = 0;
     return val;
 }
+Mixin.float = function(val) {
+    val = parseFloat(val);
+    if (isNaN(val))
+        val = 0;
+    return val;
+}
 Mixin._save = function() {
 
 
