@@ -119,12 +119,14 @@ Mixin.createDefaultComment = function() {
 Mixin._get = function(page, callback, scope) {
     var self = this;
     this.get(this._page(page), function(err, data) {
-        var args = Array.prototype.slice.call(arguments);
+
+
         if (err) {
-            throw error;
+            throw er;
             console.log(err);
             return;
         }
+
         jsdom.env({
             html: data,
             scripts: [
@@ -132,8 +134,13 @@ Mixin._get = function(page, callback, scope) {
             ]
         }, function (err, window) {
 
+
+            if (err) {
+
+                return
+            }
             self._currentPage = parseInt(page);
-            args.unshift(page);
+
 
             var finish = function() {
                 if (callback != null)
@@ -149,6 +156,7 @@ Mixin._get = function(page, callback, scope) {
 }
 
 Mixin._parseHandler = function(page, $, data, callback) {
+
 
     var self = this;
     if (page == 1) {
@@ -311,6 +319,7 @@ exports.job = new nodeio.Job({
                 });
 
     },
+
 
     run:function(url) {
 
