@@ -15,16 +15,17 @@ methods._parseRating = function($, data) {
     this.debug(doc);
     return doc;
 }
-methods._parseComments = function($, data, page) {
+methods._parseComments = function($, data, page,callback) {
     var comments = [];
     var self = this;
 
-    return comments;
+    var $el;
+    callback(comments);
 }
 methods._page = function(page) {
     return this._currentURL;
 }
-methods._hasMore = function($, data) {
+methods._hasMore = function($, data,page) {
     return false;
 
 
