@@ -50,10 +50,11 @@ var RatingMetricScore = new Schema({
 
 });
 var Queue = new Schema({
-    processed:{type:Boolean,"default":false},
+    status:{type:String,"default":"fresh"},
     site:String,
     priority:Number,
     started:Date,
+    finished:Date,
     locationId:Number,
     url:String
 });

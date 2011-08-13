@@ -9,7 +9,6 @@ var PAGE_AMOUNT = 40;
 var methods = core.methods();
 methods._parseRating = function($, data) {
 
-    
 
     var doc = this.createDefaultRating();
 
@@ -22,7 +21,7 @@ methods._parseRating = function($, data) {
 methods._parseComments = function($, data, page, callback) {
     var comments = [];
     var self = this;
-    self.debug($("ul li.review").length);   
+    self.debug($("ul li.review").length);
     $("ul li.review").each(function() {
 
         if (self.more()) {
@@ -31,6 +30,7 @@ methods._parseComments = function($, data, page, callback) {
             comment.identity = $el.find("li.user-name a").text();
             comment.date = new Date($el.find("em.dtreviewed span").attr("title"));
             comment.content = self.trim($el.find("p.review_comment").text());
+            comment.link = "http://www.yelp.com" + $el.find('a.linkToThis').attr("href");
             // since there isnt a title for yelp we will substr some of the content
             comment.title = comment.content.substr(0, 30) + "...";
             comment.score = self.float($el.find("div.rating .star-img img").attr("title").replace(/[^0-9\.]/g, ""));

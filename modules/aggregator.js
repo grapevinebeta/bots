@@ -21,8 +21,11 @@ function formatDate(date) {
     var year = date.getFullYear();
     return [month,day,year].join("-");
 }
-exports.Aggregator = Aggregator = function(type) {
+exports.Aggregator = Aggregator = function(db, type) {
 
+    this._db = db;
+  //  var MetricsClass = this._db.model("Metrics");
+   // this._metrics = new MetricsClass();
     this._type = type;
     this._aggregators = Aggregates[this._type];
     this._updates = {};
@@ -77,28 +80,33 @@ Aggregator.prototype._add = function(counters, update) {
         }
     }
 }
-Aggregator.prototype.commitSet = function(collection) {
+
+Aggregator.prototype.commitSet = function() {
+
 
     for (var name in this._updates) {
 
         for (var date in this._updates[name]) {
-            collection.update({
+            this._update({
                         name:name,
                         period:"day",
                         date:date
-                    },
-                    {"$set":this._updates[name][date]},
+                    }, {"$set":this._updates[name][date]},
                     {upsert:true});
+
         }
     }
 
+}
+Aggregator.prototype._update = function(selector, doc, options, callback) {
+    this._metrics.collection(selector, doc, options, callback);
 }
 Aggregator.prototype.commitInc = function(collection) {
 
     for (var name in this._updates) {
 
         for (var date in this._updates[name]) {
-            collection.update({
+            this._update({
                         name:name,
                         period:"day",
                         date:date

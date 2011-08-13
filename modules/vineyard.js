@@ -6,7 +6,7 @@
  * To change this template use File | Settings | File Templates.
  */
 this.title = "Eat everything tell nothing";
-this.name = "blackbox";
+this.name = "vineyard";
 this.version = "0.1.0";
 this.endpoint = "http://localhost:8080";
 var ENV = process.env.NODE_ENV || "dev";
@@ -16,14 +16,11 @@ density = new density.KeywordDensity();
 
 var Aggregator = require('./aggregator').Aggregator;
 
-var CommentAggregator = new Aggregator("comment");
-var RatingAggregator = new Aggregator("rating");
-
 
 var mongoose = require('mongoose')
 
 
-var CONFIG = require("../config/auto").config[ENV];
+var CONFIG = require("../config/automotive").config[ENV];
 var schemas = require("../config/schemas").schemas;
 
 
@@ -32,12 +29,21 @@ for (var schema in schemas) {
 }
 var db = mongoose.connect(CONFIG.mongodb);
 
+var CommentAggregator = new Aggregator(db, "comment");
+var RatingAggregator = new Aggregator(db, "rating");
 var Queue = db.model("Queue");
 var q = new Queue();
 q.url = "http://www.dealerrater.com/dealer/Tom-Williams-BMW-review-187/";
 q.site = "dealrrater.com";
 //q.save();
-
+var ACCESS_TOKEN = "145634995501895|2.AQDwNSDnf5WycG-E.3600.1310691600.0-100001852399680|oRgzH-LoB2L2F83OaBScBiIGarA";
+exports.facebook = function(options, callback) {
+    var fb = require("../jobs/social/facebook");
+    var context = new fb.FacebookContext(ACCESS_TOKEN, "last week");
+    context.start(function(docs) {
+        callback({docs:docs});
+    });
+}
 exports.reviews = function(options, callback) {
 
     CommentAggregator.reset();
@@ -88,18 +94,23 @@ exports.queue = function(options, callback) {
     var QueueClass = db.model("Queue");
     var queue = new QueueClass();
 
-    queue.collection.findAndModify({processed:false,site:options.site},
-            [
-                ["priority","ascending"]
+    if (!options.finished) {
+        queue.collection.findAndModify({status:"fresh",site:options.site},
+                [
+                    ["priority","ascending"]
 
-            ],
-            {"$set":{processed:true,started:new Date()}},
+                ],
+                {"$set":{processed:"processing",started:new Date()}},
 
-            function(err, doc) {
-                callback({job:doc});
-            }
+                function(err, doc) {
+                    callback({job:doc});
+                }
 
-    )
-
+        );
+    } else {
+        queue.collection.findAndModify({"_id":options.id},
+                {"$set":{status:"finished",finished:new Date()}}
+        );
+    }
 
 }

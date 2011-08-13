@@ -12,7 +12,7 @@ var nodeio = require('node.io');
 
 var mongoose = require('mongoose');
 var ENV = process.env.NODE_ENV;
-var config = require("../config/auto").config[ENV];
+var config = require("../config/automotive").config[ENV];
 var schemas = require("../config/schemas").schemas;
 mongoose.connect(config.mongodb);
 var cityhash = require("./../modules/cityhash.node");
