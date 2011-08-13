@@ -21,6 +21,7 @@ var core = require('../core');
 
 
 var methods = core.methods();
+methods.init('automotive');
 
 methods._parseRating = function($, data) {
 
@@ -28,6 +29,7 @@ methods._parseRating = function($, data) {
     var doc = this.createDefaultRating();
 
 
+    var html = $(data);
     // site is on a out of 10 scale, we put it to a 5 point scale
     doc.score = parseInt($("span.average").text(), 10) / 2;
 
@@ -40,49 +42,48 @@ methods._parseRating = function($, data) {
  * @inherit
  *
  */
-methods._parseComments = function($, data, page) {
+methods._parseComments = function($, data, page, callback, scope) {
     var comments = [];
     var self = this;
 
+    var html = $(data);
 
-    $("div.hreview").each(function() {
-        if (self._more) {
-            self.debug("fetching comments");
-            var comment = self.createDefaultComment();
+    html.find("div.hreview").each(function() {
+        if (!self.more()) return;
+        self.debug("fetching comments");
+        var comment = self.createDefaultComment();
 
-            comment.date = new Date($("span.value-title", this).attr("title"));
-            comment.content = $("span.description", this).text();
-
-
-            comment.identity = $(".reviewer", this).text();
-            if (self.check(comment)) {
-                // self.density(comment)
-
-
-                var matches = $('.userReviewTopRight script', this).text().match(RATING_REGX);
+        comment.date = new Date($("span.value-title", this).attr("title"));
+        comment.content = $("span.description", this).text();
+        comment.identity = $(".reviewer", this).text();
+        comment.title = comment.content.substr(0, 40) + "...";
+        if (self.check(comment)) {
+            // self.density(comment)
 
 
-                for (var i in METRICS) {
-                    comment.metrics.push({
-                        metric:METRICS[i],
-                        value:parseInt(matches[i], 10)
-                    });
-                }
-
-                var matches = $('.userReviewTopRight img', this).attr("src").match(/rating-([0-9]+).png/);
-                // self.debug(matches);
-                comment.score = parseInt(matches[1], 10);
+            var matches = $('.userReviewTopRight script', this).text().match(RATING_REGX);
 
 
-                comments.push(comment);
-
-
+            for (var i in METRICS) {
+                comment.metrics.push({
+                    metric:METRICS[i],
+                    value:parseInt(matches[i], 10)
+                });
             }
+
+            var matches = $('.userReviewTopRight img', this).attr("src").match(/rating-([0-9]+).png/);
+            // self.debug(matches);
+            comment.score = parseInt(matches[1], 10);
+
+
+            comments.push(comment);
+
+
         }
 
 
     });
-    return comments;
+    callback.call(scope, comments);
 
 }
 /**
@@ -95,7 +96,7 @@ methods._page = function(page) {
 methods._hasMore = function($, data) {
     try {
 
-        return $('h3 a').attr("href").match(new RegExp("\/page" + (this._currentPage + 1) + "\/")) ? true : false;
+        return $('h3 a', data).attr("href").match(new RegExp("\/page" + (this._currentPage + 1) + "\/")) ? true : false;
 
     } catch(e) {
         return false;

@@ -34,7 +34,8 @@ methods._parseComments = function($, data, page, callback, scope) {
     var self = this;
     var content;
 
-    var list = $(".sales-review-item,.service-review-item");
+    var html = $(data);
+    var list = html.find(".sales-review-item,.service-review-item");
     var index = -1;
     var parse = function() {
 
@@ -58,8 +59,8 @@ methods._parseComments = function($, data, page, callback, scope) {
                 // if not showing full comment fetch it
                 if (content.indexOf('...') == content.length - 3) {
 
-                    review($el.find("div.description a").attr("href"),
-                            comment, check, self);
+                    fullReview($el.find("div.description a").attr("href"),
+                        comment, check, self);
                 } else {
                     comment.content = content;
                     check(comment);
@@ -81,7 +82,7 @@ methods._parseComments = function($, data, page, callback, scope) {
         }
         parse();
     }
-    var review = function(url, comment, callback, scope) {
+    var fullReview = function(url, comment, callback, scope) {
 
         request.get({uri:"http://www.edmunds.com" + url}, function(err, response, body) {
             comment.content = self.filter($("div.description p", body).text()).trim();
@@ -111,7 +112,7 @@ methods._page = function(page) {
 
 }
 methods._hasMore = function($, data, page) {
-    return $("#page_" + (page + 1)).length;
+    return $("#page_" + (page + 1), data).length;
 
 
 }

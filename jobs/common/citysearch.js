@@ -8,24 +8,28 @@
 var core = require('../core');
 var request = require("request");
 var methods = core.methods();
+methods.init('automotive');
 methods._parseRating = function($, data) {
 
 
+    var html = $(data);
     var doc = this.createDefaultRating();
 
-    doc.count = this.int($("span.reviewCount .count").text());
+    doc.count = this.int(html.find("span.reviewCount .count").text());
     // site is on a out of 10 scale, we put it to a 5 point scale
-    doc.score = $("span.big_stars img").attr("alt").replace(/[^0-9.]+/, "");
+    doc.score = html.find("span.big_stars img").attr("alt").replace(/[^0-9.]+/, "");
     doc.score = this.float(doc.score);
 
     return doc;
 }
-methods._parseComments = function($, data, page, callback) {
+methods._parseComments = function($, data, page, callback, scope) {
     var comments = [];
     var self = this;
 
+    var html = $(data);
 
-    $("div.review").each(function() {
+    html.find("div.review").each(function() {
+        if (!self.more())return;
         var $el = $(this);
         var comment = self.createDefaultComment();
 
@@ -41,7 +45,7 @@ methods._parseComments = function($, data, page, callback) {
         }
 
     });
-    callback(comments);
+    callback.call(scope, comments);
 
 
 }
@@ -55,7 +59,7 @@ methods._hasMore = function($, data, page) {
     // 1 == /review/<id>
     // 2 = /review/<id>/page/1
     // 3 = /review/<id>/page/2
-    return $('div.paging a[href^="/review/' + this.id + '/page/' + page + '"]').length;
+    return $('div.paging a[href^="/review/' + this.id + '/page/' + page + '"]', data).length;
 
 
 }

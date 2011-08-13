@@ -19,10 +19,12 @@ methods._parseRating = function($, data) {
 
     return doc;
 }
-methods._parseComments = function($, data, page, callback) {
+methods._parseComments = function($, data, page, callback, scope) {
     var comments = [];
     var self = this;
-    $("#ip_reviews_wrapper .hReview").each(function() {
+    var html = $(data);
+    html.find("#ip_reviews_wrapper .hReview").each(function() {
+        if (!self.more())return;
         var $el = $(this);
         var identity = self.trim($el.find("a.reviewer").text());
         // make sure that we only pull comments from insiderpages.com and not patners
@@ -40,7 +42,7 @@ methods._parseComments = function($, data, page, callback) {
             }
         }
     })
-    callback(comments);
+    callback.call(scope, comments);
 }
 methods._page = function(page) {
     if (page == 1)return this._currentURL;
@@ -51,7 +53,7 @@ methods._page = function(page) {
 methods._hasMore = function($, data, page) {
     //this.debug("_hasMore", page, $("div.pagination a.next_page").length);
 
-    return $("div.pagination a.next_page").length
+    return $("div.pagination a.next_page", data).length
 
 
 }

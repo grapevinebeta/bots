@@ -10,7 +10,7 @@ function mix(o) {
     if (typeof o !== 'object') o = {};
 
     var obj = Array.prototype.slice.call(arguments, 1),
-            i = 0, l = obj.length;
+        i = 0, l = obj.length;
 
     //Iterate over each subsequent object and copy properties into o
     for (; i < l; i++) {
@@ -25,17 +25,17 @@ function mix(o) {
 }
 var mongoose = require('mongoose');
 var Schema = mongoose.Schema
-        , ObjectId = Schema.ObjectId;
+    , ObjectId = Schema.ObjectId;
 var KeywordDensity = new Schema({
     word:{type:String,index:true},
     value:Number
 })
 var Mixin = {
-    loc:{type:Number,index:true},
+    loc:Number,
     status:String,
     date:Date,
-    keywords:[KeywordDensity] ,
     tags:[],
+    rating:String,
     notes:String,
     content:String,
     title:String,
@@ -50,20 +50,21 @@ var RatingMetricScore = new Schema({
 
 });
 var Queue = new Schema({
-    status:{type:String,"default":"fresh"},
+    status:{type:String,"default":"waiting"},
     site:String,
     priority:Number,
-    started:Date,
-    finished:Date,
-    locationId:Number,
-    url:String
+    started_at:Date,
+    finished_at:Date,
+    loc:Number,
+    url:String,
+    extra:{}
 });
-Queue.index({processed:1,site:-1});
+Queue.index({loc:1,site:1,status:1})
 var SiteRating = new Schema({
-    location_id:{type:Number,index:true},
+    loc:{type:Number,index:true},
     site:{type:String,index:true},
     date:{type:Date,"default":Date.now},
-    metrics:[RatingMetricScore],
+    metrics:[],
     score:Number
 });
 
@@ -71,8 +72,10 @@ var SiteRating = new Schema({
 var Comment = new Schema(mix({
     score:Number,
     identity:String,
-    metrics:[RatingMetricScore]
-}, Mixin));
+    metrics:[]
+}, Mixin))
+Comment.index({date:1,loc:1,status:1,rating:1,site:1});
+
 var Social = new Schema(mix({
 
     network:String, // indexed

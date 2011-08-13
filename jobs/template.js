@@ -5,27 +5,27 @@ methods._parseRating = function($, data) {
 
 
     var doc = this.createDefaultRating();
-
+    var html = $(data);
 
     // site is on a out of 10 scale, we put it to a 5 point scale
-    doc.score = parseInt($("span.average").text(), 10) / 2;
+    doc.score; //parseInt($("span.average").text(), 10) / 2;
 
-    doc.rating = $("span.average").text();
-    doc.count = $("span.count").text();
-    this.debug(doc);
+    doc.rating;// = $("span.average").text();
+    doc.count;// = $("span.count").text();
+
     return doc;
 }
-methods._parseComments = function($, data, page,callback) {
+methods._parseComments = function($, data, page, callback, scope) {
     var comments = [];
     var self = this;
 
-    var $el;
+    var html = $(data);
     callback(comments);
 }
 methods._page = function(page) {
     return this._currentURL;
 }
-methods._hasMore = function($, data,page) {
+methods._hasMore = function($, data, page) {
     return false;
 
 

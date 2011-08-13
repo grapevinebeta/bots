@@ -8,18 +8,12 @@
 
 require.paths.unshift("/usr/local/lib/node_modules");
 console.log(require.paths);
+
 var nodeio = require('node.io');
-var ENV = process.env.NODE_ENV || dev;
-var CONFIG = require("../config/auto")[ENV];
-
-
-var cityhash = require("./../modules/cityhash.node");
-
-var jsdom = require("jsdom");
 
 
 var Mixin = {};
-var request = require('request');
+
 
 Mixin._more = true;
 
@@ -94,7 +88,7 @@ Mixin.createDefaultComment = function() {
         score:null,
         identity:null,
         metrics:[],
-        location_id:this.locationId(),
+        loc:this.locationId(),
         site:this.site(),
         status:'',
         date:null,
@@ -118,8 +112,8 @@ Mixin.createDefaultComment = function() {
  */
 Mixin._get = function(page, callback, scope) {
     var self = this;
-    this.get(this._page(page), function(err, data) {
-
+    var process = function(err, data) {
+        this._currentPage = parseInt(page);
 
         if (err) {
             throw er;
@@ -127,31 +121,18 @@ Mixin._get = function(page, callback, scope) {
             return;
         }
 
-        jsdom.env({
-            html: data,
-            scripts: [
-                'http://code.jquery.com/jquery-1.5.min.js'
-            ]
-        }, function (err, window) {
+        var finish = function() {
+            if (callback != null)
+                callback.apply(scope)
+        }
+        //this.$("body").html();
+
+        this._parseHandler(page, this.jquery, data, finish);
 
 
-            if (err) {
-
-                return
-            }
-            self._currentPage = parseInt(page);
-
-
-            var finish = function() {
-                if (callback != null)
-                    callback.apply(scope)
-            }
-
-            self._parseHandler.apply(self, [page,window.jQuery,data,finish]);
-
-
-        });
-
+    }
+    this.get(this._page(page), function() {
+        process.apply(self, arguments);
     });
 }
 
@@ -206,14 +187,7 @@ Mixin._hasMore = function($) {
 Mixin._page = function(page) {
 
 }
-Mixin.blackbox = function(method, endpoint, body, callback) {
-    request({
-        method:method,
-        uri:CONFIG.blackbox + endpoint,
-        body:body,
-        json:true
-    }, callback)
-}
+
 Mixin.int = function(val) {
     val = parseInt(val, 10);
     if (isNaN(val))
@@ -236,38 +210,27 @@ Mixin._save = function() {
     var len = this._comments.length;
     var self = this;
 
-    this.blackbox("POST", "/reviews",
-            {
-                locationId:this.locationId(),
-                site:this.site(),
-                rating:this._rating,
-                comments:this._comments
-            }, function(err, response, body) {
-                self._comments = [];
-                self._rating = null;
-                self.emit("finished :" + self._currentURL);
-            })
+    this.Config.vineyard("POST", "/reviews",
+        {
+            loc:this.locationId(),
+            site:this.site(),
+            industry:this._industry,
+            rating:this._rating,
+            comments:this._comments
+        }, function(err, response, body) {
+            self._comments = [];
+            self._rating = null;
+            self.emit("finished :" + self._currentURL);
+        })
 
 
 }
-Mixin._hash = function(obj) {
-    var str = null;
-    var month = obj.date.getMonth() + 1;
-    if (month < 10) {
-        month = "0" + month;
-    }
-    var date = obj.date.getDate();
-    if (date < 10) {
-        date = "0" + date;
-    }
-    var prefix = [month,date,obj.date.getFullYear(),obj.locationId,obj.site].join("-");
-
-    var str = prefix + [obj.site,obj.date,obj.identity].join("|");// hash from site.host|comment.date|comment.commiter - indexed
+/**
+ * Comutes an hash for the object
+ * @param obj
+ */
 
 
-    var hash = cityhash.hash64(str, "cideas", "grapevine").value;
-    return prefix + ":" + hash;
-}
 Mixin.debug = function() {
     if (this.options.debug) {
         console.log(Array.prototype.slice.call(arguments));
@@ -278,7 +241,7 @@ Mixin.transform = function(str) {
     return str.toLowerCase().replace(/[^a-z]+/g, "_");
 }
 Mixin.check = function(obj) {
-    obj._id = this._hash(obj);
+    obj._id = this.Config.hash(obj);
     if (obj._id != this._lastHash) {
         return true;
     }
@@ -300,38 +263,11 @@ Mixin.site = function(domainOnly) {
 Mixin.more = function() {
     return this._more;
 }
+Mixin._run = function(url) {
 
-exports.methods = function() {
-    return nodeio.utils.put({}, Mixin);
-}
-exports.job = new nodeio.Job({
-
-
-    input:function(start, num, callback) {
-        var self = this;
-        Mixin.blackbox("GET", "/queue", {site:this.options.site},
-                function(err, response, body) {
-                    if (body && body.hasOwnProperty("url")) {
-                        self.locationId(body.location_id);
-
-                        callback(body.url)
-                    }
-                });
-
-    },
-
-
-    run:function(url) {
-
-
-        // since node.io only copies the core functions when
-        // forking an job instance we must mixin the methods
-        if (!this.mixin) {
-            this.options.spoof = true;
-            nodeio.utils.put(this, this.options.methods);
-            this.mixin = true;
-        }
-        var self = this;
+    var self = this;
+    var runner = function(url) {
+        //  this.$("body").html("");
         this._more = true;
 
 
@@ -343,7 +279,64 @@ exports.job = new nodeio.Job({
             this._get(1);
         }, this);
     }
+    if (!this.jquery) {
+        var jsdom = require("jsdom"),
+            window = jsdom.jsdom().createWindow();
+        jsdom.jQueryify(window, 'http://code.jquery.com/jquery-1.4.2.min.js', function() {
+            self.jquery = window.$;
+            //window.$('body').append('<div class="testing">Hello World, It works</div>');
+            runner.call(self, url);
+        });
+    } else {
+        runner.call(this, url);
+    }
+}
+
+Mixin.init = function(industry, env) {
+    var Config = require(__dirname + '/../config/config').Config;
+    this.Config = new Config(industry, env);
+}
+exports.methods = function() {
+    return nodeio.utils.put({}, Mixin);
+}
+
+exports.job = new nodeio.Job({
+
+
+    input:function(start, num, callback) {
+        _mixin.call(this);
+        var self = this;
+        this.Config.vineyard("GET", "/queue", {site:this.options.site},
+            function(err, response, body) {
+                if (body && body.hasOwnProperty("url")) {
+                    self.locationId(body.loc);
+                    self._industry = body.industry;
+
+                    callback(body.url);
+                }
+            });
+
+    },
+
+
+    run:function(url) {
+
+        _mixin.call(this);
+
+        // since node.io only copies the core functions when
+        // forking an job instance we must mixin the methods
+
+        this._run(url);
+
+    }
 });
+function _mixin() {
+    if (!this.mixin) {
+        this.options.spoof = true;
+        nodeio.utils.put(this, this.options.methods);
+        this.mixin = true;
+    }
+}
 
 //console.log(Job.prototype);
 

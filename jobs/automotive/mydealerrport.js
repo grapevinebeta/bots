@@ -26,28 +26,34 @@ var methods = core.methods();
 methods._parseRating = function($, data) {
 
 
+    var html = $(data);
+
     var doc = this.createDefaultRating();
-    doc.score = this.filter($(".showRating").text).toInt() / 2; // normalize to a 5 point scale
+    doc.score = this.int(html.find(".showRating").text()) / 2; // normalize to a 5 point scale
+    this.debug(doc);
 
     var self = this;
     var metric_key;
     var metric_value;
     var metric_regex = /ComenzarCargaBarra\('([a-z]+)',([0-9.]+)\)/i;
-    $(".tableFullReportRight script").each(function(script) {
-        matches = script.innerHTML.match(metric_regex);
-        metric_key = matches[1];
+    /* html.find(".tableFullReportRight script").each(function() {
 
-        if (mapping[metric_key]) {
-            metric_key = mapping[metric_key];
-            metric_value = (self.filter(matches[2]).toInt() / 100) * 5;// normalize to a 5 point scale
-            doc.metrics.push({
-                metric:metric_key,
-                value:metric_value});
+     matches = $(this).html().match(metric_regex);
 
-        }
+     metric_key = matches[1];
+     self.debug(metric_key);
+
+     if (mapping[metric_key]) {
+     metric_key = mapping[metric_key];
+     metric_value = (self.filter(matches[2]).toInt() / 100) * 5;// normalize to a 5 point scale
+     doc.metrics.push({
+     metric:metric_key,
+     value:metric_value});
+
+     }
 
 
-    });
+     });*/
 
 
     return doc;
@@ -58,13 +64,14 @@ methods._parseComments = function($, data, page) {
     var self = this;
 
     var content;
-
+    var html = $(data);
     //TODO add error checking
     var isComment = false;
-    $("tr div.datafullreport").each(function() {
+    html.find("tr div.datafullreport").each(function() {
         if (!self._more)return;
         var comment = self.createDefaultComment();
-        $("div", this).each(function(i, div) {
+
+        $("div", this).each(function() {
 
             isComment = false;
             var el = $(this);
@@ -101,15 +108,15 @@ methods._parseComments = function($, data, page) {
                             // fetch with
                             metric_value = el.find("td:first").attr("width");
                             // transform to 100 point scale and divide by 20 to get to 5 point scale
-                            metric_value = parseFloat(metric_value, 10) / 20;
+                            metric_value = self.float(metric_value) / 20;
                             done = true;
                         }
                         if (done) {
                             comment.metrics.push(
-                                    {
-                                        metric:metric_key,
-                                        value:metric_value
-                                    });
+                                {
+                                    metric:metric_key,
+                                    value:metric_value
+                                });
                         }
 
 
@@ -117,10 +124,12 @@ methods._parseComments = function($, data, page) {
                 });
             } else if (content.indexOf("User:") != -1) {
 
-                comment.identity = self.filter($(div).text().replace("User:", "")).trim();
+                comment.identity = self.filter(el.text().replace("User:", "")).trim();
             } else if (content.indexOf("Date:") != -1) {
 
-                comment.date = new Date(self.filter($(div).text().replace("Date:")).trim());
+                var date = self.filter(el.text().replace("Date:", '')).trim();
+
+                comment.date = new Date(date);
 
             } else if (isComment) {
                 comment.content = self.filter(content).trim();
@@ -139,6 +148,7 @@ methods._parseComments = function($, data, page) {
 
 
     });
+    this.debug(comments);
     return comments;
 
 
@@ -152,13 +162,16 @@ methods._hasMore = function($, data) {
 
 
 }
+methods._save = function() {
+    this.debug(this._comments);
+}
 
 exports.job = core.job.extend({debug:false,site:"mydealerreport.com",methods:methods}, {
     input: ["http://mydealerreport.com/fullReport.php?DealerID=6841"],
     run:function(url) {
         this.id = urlparse(url, true).query.DealerID;
 
-        Job.run.call(this, url);
+        core.job.run.call(this, url);
     }
 
 });

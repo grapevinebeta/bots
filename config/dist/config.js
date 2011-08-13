@@ -6,7 +6,8 @@ var configs =
             vinyard:"http://localhost:8080"
         },
         prod:{
-            mongodb:"mongodb://50.57.109.127/grapevine_auto"
+            mongodb:"mongodb://::/automotive",
+            vinyard:""
 
         }
     }

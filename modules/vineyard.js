@@ -14,13 +14,15 @@ var ENV = process.env.NODE_ENV || "dev";
 var density = require("../modules/keyworddensity");
 density = new density.KeywordDensity();
 
-var Aggregator = require('./aggregator').Aggregator;
-
 
 var mongoose = require('mongoose')
 
 
-var CONFIG = require("../config/automotive").config[ENV];
+var ConfigClass = require("../config/config").Config;
+var Aggregator = require('./aggregator').Aggregator;
+var Config = new ConfigClass("global");
+
+
 var schemas = require("../config/schemas").schemas;
 
 
@@ -29,8 +31,7 @@ for (var schema in schemas) {
 }
 var db = mongoose.connect(CONFIG.mongodb);
 
-var CommentAggregator = new Aggregator(db, "comment");
-var RatingAggregator = new Aggregator(db, "rating");
+
 var Queue = db.model("Queue");
 var q = new Queue();
 q.url = "http://www.dealerrater.com/dealer/Tom-Williams-BMW-review-187/";
@@ -44,20 +45,21 @@ exports.facebook = function(options, callback) {
         callback({docs:docs});
     });
 }
+
 exports.reviews = function(options, callback) {
 
-    CommentAggregator.reset();
-    RatingAggregator.reset();
-    var commentDate,date,path;
+    var aggregators = this.init(options.industry);
+    var a_comments = aggregators.comments;
+    var a_ratings = aggregators.ratings;
 
-    var metrics = db.collection("metrics");
+
     var locationId = options.location_id;
 
     if (options.rating) {
 
-        RatingAggregator.process(locationId, options.rating);
+        a_ratings.process(locationId, options.rating);
 
-        RatingAggregator.commitSet(metrics);
+        a_ratings.set();
 
 
     }
@@ -67,20 +69,38 @@ exports.reviews = function(options, callback) {
 
         var updates = {};
         for (var i in options.comments) {
-            var comment = new CommentClass(options.comments[i]);
+            var comment = options.comments[i];
+
+            a_comments.process(comment.loc, comment);
             var keywords = density.getDensity(comment.content, 2);
 
 
-            CommentAggregator.process(comment.loc, comment);
-
-
         }
-        CommentAggregator.commitInc(metrics);
+        a_comments.inc(metrics);
     }
 
     callback("ok");
 
 }
+function _init(industry) {
+
+    if (!this._aggregators[industry]) {
+        var config = new Config(industry);
+        var db = mongoose.connect(config.get("mongodb"));
+        var comments = new Aggregator(db, "comment", config);
+        var ratings = new Aggregator(db, "rating", config);
+        this._aggregators[industry] = {
+            comments:comments,
+            ratings:ratings
+        };
+    }
+
+
+    return this._aggregators[industry];
+}
+exports.reviews.init = _init;
+
+
 exports.reviews.description = "Yummy comments, all for me";
 
 exports.social = function(options, callback) {
@@ -95,21 +115,21 @@ exports.queue = function(options, callback) {
     var queue = new QueueClass();
 
     if (!options.finished) {
-        queue.collection.findAndModify({status:"fresh",site:options.site},
-                [
-                    ["priority","ascending"]
+        queue.collection.findAndModify({status:"waiting",site:options.site},
+            [
+                ["priority","ascending"]
 
-                ],
-                {"$set":{processed:"processing",started:new Date()}},
+            ],
+            {"$set":{status:"processing",started_at:new Date()}},
 
-                function(err, doc) {
-                    callback({job:doc});
-                }
+            function(err, doc) {
+                callback({job:doc});
+            }
 
         );
     } else {
         queue.collection.findAndModify({"_id":options.id},
-                {"$set":{status:"finished",finished:new Date()}}
+            {"$set":{status:"finished",finished_at:new Date()}}
         );
     }
 

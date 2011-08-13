@@ -27,10 +27,11 @@ methods._parseRating = function($, data) {
 
     return doc;
 }
-methods._parseComments = function($, data, page, callback) {
+methods._parseComments = function($, data, page, callback, scope) {
     var comments = [];
     var self = this;
-    var list = $("#ctl00_PlaceHolderMain_jbReviewGridview tr");
+    var html = $(data);
+    var list = html.find("#ctl00_PlaceHolderMain_jbReviewGridview tr");
     var length = list.length;
     var index = -1;
 
@@ -57,12 +58,13 @@ methods._parseComments = function($, data, page, callback) {
             var content = self.trim($content_link.text().replace("More >", ""));
 
 
+            // fetch full comment
             var more_link = $("a", $content_link).attr("href").replace(/\.\.\//g, '');
             more_link = "http://www.judysbook.com/" + more_link;
             fetch_full_comment(comment, more_link, check);
 
         } else {
-            callback(comments);
+            callback.call(scope, comments);
         }
 
     }
@@ -103,7 +105,7 @@ methods._page = function(page) {
 }
 methods._hasMore = function($, data, page) {
 
-    var max = parseInt($("td.PagerOtherPageCells a[title^='Show Result']:last").text(), 10);
+    var max = this.int($("td.PagerOtherPageCells a[title^='Show Result']:last", data).text());
     return max != page;
 
 
