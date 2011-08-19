@@ -114,17 +114,19 @@ Mixin._get = function(page, callback, scope) {
     var self = this;
     var process = function(err, data) {
         this._currentPage = parseInt(page);
-
-        if (err) {
-            throw er;
-            console.log(err);
-            return;
-        }
-
         var finish = function() {
             if (callback != null)
                 callback.apply(scope)
         }
+        if (err) {
+            // most cases this will be an 404 error
+            //
+            console.log(err);
+
+            return finish();
+        }
+
+
         //this.$("body").html();
 
         this._parseHandler(page, this.jquery, data, finish);
@@ -141,7 +143,7 @@ Mixin._parseHandler = function(page, $, data, callback) {
 
     var self = this;
     if (page == 1) {
-        this._rating = this._parseRating($, data);
+        // this._rating = this._parseRating($, data);
 
         var begin = function(comments) {
             self._comments = comments;
@@ -215,7 +217,6 @@ Mixin._save = function() {
             loc:this.locationId(),
             site:this.site(),
             industry:this._industry,
-            rating:this._rating,
             comments:this._comments
         }, function(err, response, body) {
             self._comments = [];
@@ -292,8 +293,11 @@ Mixin._run = function(url) {
     }
 }
 
+var Config = require(__dirname + '/../config/config').Config;
+var GlobalConfig = new Config();
 Mixin.init = function(industry, env) {
-    var Config = require(__dirname + '/../config/config').Config;
+
+    
     this.Config = new Config(industry, env);
 }
 exports.methods = function() {
@@ -306,7 +310,7 @@ exports.job = new nodeio.Job({
     input:function(start, num, callback) {
         _mixin.call(this);
         var self = this;
-        this.Config.vineyard("GET", "/queue", {site:this.options.site},
+        GlobalConfig.queue({site:this.options.site},
             function(err, response, body) {
                 if (body && body.hasOwnProperty("url")) {
                     self.locationId(body.loc);

@@ -11,32 +11,21 @@ this.version = "0.1.0";
 this.endpoint = "http://localhost:8080";
 var ENV = process.env.NODE_ENV || "dev";
 
-var density = require("../modules/keyworddensity");
-density = new density.KeywordDensity();
+
+var ConfigClass = require(__dirname + "/../config/config").Config;
+var Aggregator = require(__dirname + '/aggregator').Aggregator;
+var Config = new ConfigClass("globals");
 
 
-var mongoose = require('mongoose')
+var schemas = require(__dirname + "/../config/schemas").schemas;
 
 
-var ConfigClass = require("../config/config").Config;
-var Aggregator = require('./aggregator').Aggregator;
-var Config = new ConfigClass("global");
-
-
-var schemas = require("../config/schemas").schemas;
-
-
-for (var schema in schemas) {
-    mongoose.model(schema, schemas[schema]);
+var GlobalDB = require('mongoose').connect(Config.get("mongodb"));
+for (var schema in schemas.dashboard) {
+    GlobalDB.model(schema, schemas.dashboard[schema]);
 }
-var db = mongoose.connect(CONFIG.mongodb);
 
 
-var Queue = db.model("Queue");
-var q = new Queue();
-q.url = "http://www.dealerrater.com/dealer/Tom-Williams-BMW-review-187/";
-q.site = "dealrrater.com";
-//q.save();
 var ACCESS_TOKEN = "145634995501895|2.AQDwNSDnf5WycG-E.3600.1310691600.0-100001852399680|oRgzH-LoB2L2F83OaBScBiIGarA";
 exports.facebook = function(options, callback) {
     var fb = require("../jobs/social/facebook");
@@ -55,14 +44,14 @@ exports.reviews = function(options, callback) {
 
     var locationId = options.location_id;
 
-    if (options.rating) {
+    /*  if (options.rating) {
 
-        a_ratings.process(locationId, options.rating);
+     a_ratings.process(locationId, options.rating);
 
-        a_ratings.set();
+     a_ratings.set();
 
 
-    }
+     }*/
 
     if (options.comments && options.comments.length) {
 
@@ -72,7 +61,6 @@ exports.reviews = function(options, callback) {
             var comment = options.comments[i];
 
             a_comments.process(comment.loc, comment);
-            var keywords = density.getDensity(comment.content, 2);
 
 
         }
@@ -86,7 +74,10 @@ function _init(industry) {
 
     if (!this._aggregators[industry]) {
         var config = new Config(industry);
-        var db = mongoose.connect(config.get("mongodb"));
+        var db = require('mongoose').connect(config.get("mongodb"));
+        for (var schema in schemas.industry) {
+            db.model(schema, schemas.industry[schema]);
+        }
         var comments = new Aggregator(db, "comment", config);
         var ratings = new Aggregator(db, "rating", config);
         this._aggregators[industry] = {
@@ -111,7 +102,7 @@ exports.social.description = "nasty social...";
 
 exports.queue = function(options, callback) {
 
-    var QueueClass = db.model("Queue");
+    var QueueClass = GlobalDB.model("Queue");
     var queue = new QueueClass();
 
     if (!options.finished) {
@@ -121,6 +112,7 @@ exports.queue = function(options, callback) {
 
             ],
             {"$set":{status:"processing",started_at:new Date()}},
+            {new:true},
 
             function(err, doc) {
                 callback({job:doc});
@@ -134,3 +126,4 @@ exports.queue = function(options, callback) {
     }
 
 }
+exports.queue.description = "Drink some wine but you have to spit it back out";

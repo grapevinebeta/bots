@@ -52,21 +52,31 @@ var comments = {
             },
             reviews:0
         },
-        finalize:function(db, comment, config) {
+        finalize:function(db, comments, config) {
 
-            if (comment.score <= 3) {
-                comment.status = "alert";
-            } else {
-                comment.status = "new";
-            }
-            if (comment.score < 4) {
-                // TODO send alert
-                config.webhook('/alert', {
-                    comments:[comment]
-                })
-            }
+            var comment;
+            var alerts = [];
             var CommentClass = db.model("Comment");
-            new CommentClass(comment).save();
+            for (var i in comments) {
+                comment = comments[i];
+                if (comment.score < 3 && comment.score!=0) { // negative
+                    comment.status = "alert";
+                } else {
+                    comment.status = "new";
+                }
+                if (comment.status == "alert") { // comment needs to be comments, a batch request
+                    alerts.push(comment);
+
+                }
+
+                new CommentClass(comment).save();
+            }
+            if (alerts.length) {
+                // TODO send alert
+                config.webhook('/emails/alerts', {
+                    documents:alerts
+                });
+            }
 
         },
         counters:{

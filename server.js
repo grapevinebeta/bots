@@ -7,7 +7,7 @@
  */
 require.paths.unshift("/usr/local/lib/node_modules");
 var webservice = require('webservice'),
-        blackbox = require('./modules/blackbox');
+        vineyard= require('./modules/vineyard');
 
-webservice.createServer(blackbox).listen(8080);
-console.log(' > json webservice started on port 8080');
+webservice.createServer(vineyard).listen(8081);
+console.log(' > json webservice started on port 8081');

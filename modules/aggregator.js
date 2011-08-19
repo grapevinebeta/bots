@@ -6,8 +6,8 @@
  * To change this template use File | Settings | File Templates.
  */
 
-var _ = require('./merger');
-var Aggregates = require('../config/aggregates');
+var _ = require(__dirname + '/merger');
+var Aggregates = require(__dirname + '/../config/aggregates');
 
 function formatDate(date) {
 

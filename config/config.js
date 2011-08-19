@@ -5,6 +5,7 @@ var configs =
             database:"mongodb://localhost",
             app:"http://localhost/grapevine",
             vineyard:"http://localhost"
+
         },
         prod:{
             database:"mongodb://localhost",
@@ -15,10 +16,12 @@ var configs =
 
 
         webhooks:"{app}/webhooks",
-        vineyard:"{vineyard}:8080"
+        vineyard:"{vineyard}:8081",
+        mongodb:"{database}/dashboard"
 
 
     },
+
 
     automotive:{
         mongodb:"{database}/automotive"
@@ -48,6 +51,7 @@ var Config = function(industry, env) {
 Config.prototype.get = function(key) {
     if (this._cache[key])return this._cache[key];
     var value = this._config[key] || this._globals[key];
+    console.log(key, ":", value);
     if (value.indexOf("{") != -1) {
         var self = this;
         value = value.replace(/\{([a-z]+)\}/ig, function(dummy, token) {
@@ -90,11 +94,14 @@ Config.prototype.hash = function(obj) {
     var hash = cityhash.hash64(str, "cideas", "grapevine").value;
     return /*prefix + ":" + */hash;
 }
-Config.prototype.vinyard = function(method, endpoint, body, callback) {
+Config.prototype.queue = function(body, callback) {
+    this.vineyard("GET", "/queue", body, callback);
+}
+Config.prototype.vineyard = function(method, endpoint, body, callback) {
 
     this.request({
         method:method,
-        uri:this.get("vinyard") + endpoint,
+        uri:this.get("vineyard") + endpoint,
         body:body,
         json:true
     }, callback);

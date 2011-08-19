@@ -54,7 +54,7 @@ methods._parseComments = function($, data, page, callback, scope) {
 
         // google breaks up the review content plus adds inline css which gets
         // picked up with jquery.. luckly they wrapped each section nicely.. HA
-        comment.content = comment.title + $el.find(".snippet").text();
+        comment.content = comment.title + " " + $el.find(".snippet").text();
         if (self.check(comment)) {
             comments.push(comment);
         }

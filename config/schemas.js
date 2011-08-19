@@ -95,12 +95,16 @@ var Metrics = new Schema({
 Metrics.index({name:1,period:1,start_date:1});
 
 exports.schemas = {
-    RatingMetricScore:RatingMetricScore,
-    SiteRating:SiteRating,
-    Comment:Comment,
-    Social:Social,
-    KeywordDensity:KeywordDensity,
-    Queue:Queue
+    industry:{
+        Comment:Comment,
+        Social:Social
+    },
+    dashboard:{
+        Queue:Queue
+    }
+
+
+
 };
 
 
