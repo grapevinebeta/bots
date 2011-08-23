@@ -35,39 +35,21 @@ Mixin._rating = {};
  * @param scope
  */
 Mixin._fetchLastHash = function(callback, scope) {
-    callback.call(scope);
 
-    /*var Comment = this._db.model("Comment");
-     this.debug("fetchLashHash.start");
-     var self = this;
 
-     var regex = new Regexp(["^[0-9]+",this.locationId(),this.site(true)].join("-"));
-     Comment.findOne({"_id":regex}, {"_id":1}, function(err, c) {
-     // TODO error checking
-     c = c || {uuid:""};
+    this.vineyard('GET', '/aging', {
+        loc:this.locationId(),
+        site:this.site(),
+        industry:this.industry(),
+        type:"comments"
+    }, function(body) {
 
-     self.debug("LastHash for [" + self._site + "] =" + c.uuid);
+        callback.call(scope, body.id);
+    });
 
-     callback.call(scope, c.uuid);
-
-     });*/
-}
-/**
- *
- * @param {Comment} comment
- * @param level
- */
-Mixin.density = function(comment, level) {
-    /* var hash = this._density(comment.contet, level);
-
-     for (word in hash) {
-     comment.keywords.push({word:word,count:hash[word]});
-     }*/
 
 }
-Mixin._density = function(content, level) {
-    // return density.getDensity(content, level || 2);
-}
+
 Mixin.createDefaultRating = function() {
     return {
         location_id:this.locationId(),
@@ -84,10 +66,10 @@ Mixin.createDefaultComment = function() {
 
     return{
         //month-day-year-location-site-hash
-        _id:null, // hash from site.host|comment.date|comment.commiter - indexed
+
+        hash:null,// hash from site.host|comment.date|comment.commiter - indexed
         score:null,
         identity:null,
-        metrics:[],
         loc:this.locationId(),
         site:this.site(),
         status:'',
@@ -110,8 +92,10 @@ Mixin.createDefaultComment = function() {
  * @param callback
  * @param scope
  */
-Mixin._get = function(page, callback, scope) {
+Mixin._get = function(page, callback, scope, retry) {
     var self = this;
+    retry = retry || 0;
+
     var process = function(err, data) {
         this._currentPage = parseInt(page);
         var finish = function() {
@@ -120,8 +104,13 @@ Mixin._get = function(page, callback, scope) {
         }
         if (err) {
             // most cases this will be an 404 error
-            //
-            console.log(err);
+            if (retry < 2) { // check with retrys
+                if (err == 500 && retry) {
+                    return self._get(page, callback, scope, retry++);
+                }
+
+            }
+
 
             return finish();
         }
@@ -208,20 +197,36 @@ Mixin.trim = function(val) {
 Mixin._save = function() {
 
 
+    this.debug("SAVING");
     var i = 0;
     var len = this._comments.length;
     var self = this;
+    console.log("Comments Count : " + len);
 
-    this.Config.vineyard("POST", "/reviews",
-        {
-            loc:this.locationId(),
-            site:this.site(),
-            industry:this._industry,
-            comments:this._comments
-        }, function(err, response, body) {
+    var commit = function() {
+        self.vineyard('POST', '/queue', {
+            id:self._job.id,
+            finished:true
+        }, function(body) {
+
             self._comments = [];
             self._rating = null;
             self.emit("finished :" + self._currentURL);
+        });
+    }
+    if (!len) {
+        commit();
+        return;
+    }
+    this.vineyard("POST", "/reviews",
+        {
+            loc:this.locationId(),
+            site:this.site(),
+            industry:this.industry(),
+            comments:this._comments
+        }, function(body) {
+            commit();
+
         })
 
 
@@ -232,18 +237,18 @@ Mixin._save = function() {
  */
 
 
-Mixin.debug = function() {
-    if (this.options.debug) {
-        console.log(Array.prototype.slice.call(arguments));
-        // this.logger.debug.apply(this.logger, Array.prototype.slice.call(arguments));
-    }
-}
+/*Mixin.debug = function() {
+ if (this.options.debug) {
+ console.log(Array.prototype.slice.call(arguments));
+ // this.logger.debug.apply(this.logger, Array.prototype.slice.call(arguments));
+ }
+ }*/
 Mixin.transform = function(str) {
     return str.toLowerCase().replace(/[^a-z]+/g, "_");
 }
 Mixin.check = function(obj) {
-    obj._id = this.Config.hash(obj);
-    if (obj._id != this._lastHash) {
+    obj.hash = this.Config.hash(obj);
+    if (obj.hash != this._lastHash) {
         return true;
     }
     this.debug("finished!!!");
@@ -260,13 +265,24 @@ Mixin.locationId = function(id) {
 Mixin.site = function(domainOnly) {
     return this.options.site;
 }
+Mixin.industry = function(i) {
+    if (i) {
+        this._industry = i;
+    }
+    return this._industry;
+}
 
 Mixin.more = function() {
     return this._more;
 }
-Mixin._run = function(url) {
+Mixin._run = function(job) {
 
     var self = this;
+    this._job = job;
+    this.locationId(job.loc);
+    this.industry(job.industry);
+
+    var url = job.url;
     var runner = function(url) {
         //  this.$("body").html("");
         this._more = true;
@@ -297,40 +313,87 @@ var Config = require(__dirname + '/../config/config').Config;
 var GlobalConfig = new Config();
 Mixin.init = function(industry, env) {
 
-    
+
     this.Config = new Config(industry, env);
 }
 exports.methods = function() {
     return nodeio.utils.put({}, Mixin);
+}
+var query = require('querystring');
+Mixin.vineyard = function(method, endpoint, body, callback) {
+    var url = GlobalConfig.uri("vineyard", endpoint);
+    var parse = function(err, body) {
+
+        if (body) {
+            try {
+                body = JSON.parse(body);
+            } catch(e) {
+                body = {};
+            }
+            callback(body);
+        }
+
+    }
+
+    if (method == 'GET') {
+        body = query.stringify(body);
+        url += "?" + body;
+        this.get(url, parse);
+    } else {
+        var headers = {
+            "content-type": 'application/json'
+        };
+
+        body = JSON.stringify(body);
+        //console.log(body);
+
+        this.post(url, body, headers, parse);
+    }
+
 }
 
 exports.job = new nodeio.Job({
 
 
     input:function(start, num, callback) {
-        _mixin.call(this);
-        var self = this;
-        GlobalConfig.queue({site:this.options.site},
-            function(err, response, body) {
-                if (body && body.hasOwnProperty("url")) {
-                    self.locationId(body.loc);
-                    self._industry = body.industry;
 
-                    callback(body.url);
+
+        var vineyard = Mixin.vineyard;
+        vineyard.call(this, 'GET', '/queue', {site:this.options.site},
+            function(body) {
+
+
+                if (body && body.url) {
+
+                    // can't emit an object, so strinify it, the extended
+                    // jobs will need to parse
+                    body =
+                    {
+                        id:body._id,
+                        url:body.url,
+                        loc:body.loc,
+                        industry:body.industry
+                    }
+
+
+                    callback([body]);
+                } else {
+                    callback(false);// finished
                 }
             });
+
 
     },
 
 
-    run:function(url) {
+    run:function(job) {
 
         _mixin.call(this);
 
         // since node.io only copies the core functions when
         // forking an job instance we must mixin the methods
 
-        this._run(url);
+        this._run(job);
 
     }
 });

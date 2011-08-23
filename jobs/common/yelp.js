@@ -4,7 +4,7 @@
  * Date: 7/13/11
  * Time: 5:50 AM
  */
-var core = require('../core');
+var core = require(__dirname + '/../core');
 var PAGE_AMOUNT = 40;
 var methods = core.methods();
 methods._parseRating = function($, data) {
@@ -56,15 +56,13 @@ methods._hasMore = function($, data, page) {
 
 
 }
-methods._save = function() {
-    this.debug("Comments", this._comments.length);
-}
+methods.init();
 
 exports.job = core.job.extend({debug:false,site:"yelp.com",methods:methods}, {
-    input: ["http://www.yelp.com/biz/kings-court-frankfurter-express-san-antonio"],
-    run:function(url) {
-        this.page_template = url + "?rpp=" + PAGE_AMOUNT + "&sort_by=relevance_desc&start={start}";
-        core.job.run.call(this, url);
+
+    run:function(job) {
+        this.page_template = job.url + "?rpp=" + PAGE_AMOUNT + "&sort_by=relevance_desc&start={start}";
+        core.job.run.call(this, job);
     }
 
 });

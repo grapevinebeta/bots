@@ -5,10 +5,10 @@
  * Time: 1:44 AM
  */
 
-var core = require('../core');
-var request = require("request");
+var core = require(__dirname + '/../core');
+
 var methods = core.methods();
-methods.init('automotive');
+
 methods._parseRating = function($, data) {
 
 
@@ -40,7 +40,7 @@ methods._parseComments = function($, data, page, callback, scope) {
         comment.identity = $el.find("h3 a").text();
         comment.content = self.filter($el.find("p").text()).trim();
         if (self.check(comment)) {
-            self.debug(comment);
+
             comments.push(comment);
         }
 
@@ -66,15 +66,16 @@ methods._hasMore = function($, data, page) {
 methods._save = function() {
     this.debug("Total Comments", this._comments.length);
 }
+methods.init();
 exports.job = core.job.extend({debug:false,site:"citysearch.com",methods:methods}, {
     input: ["http://sanantonio.citysearch.com/profile/10106034/san_antonio_tx/tom_benson_chevrolet.html"],
-    run:function(url) {
+    run:function(job) {
 
-        this.id = url.replace(/[^0-9]+/g, "");
-        this.host = require("url").parse(url).host;
+        this.id = job.url.replace(/[^0-9]+/g, "");
+        this.host = require("url").parse(job.url).host;
 
-        url = "http://" + this.host + "/review/" + this.id;
+        job.url = "http://" + this.host + "/review/" + this.id;
 
-        core.job.run.call(this, url);
+        core.job.run.call(this, job);
     }
 });

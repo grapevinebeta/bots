@@ -3,7 +3,7 @@ var configs =
     tokens:{
         dev:{
             database:"mongodb://localhost",
-            app:"http://localhost/grapevine",
+            app:"http://grapevine.localhost",
             vineyard:"http://localhost"
 
         },
@@ -45,13 +45,40 @@ var Config = function(industry, env) {
     this._config = configs[industry];
     this._globals = configs.globals;
     this._cache = {};
+    console.log("Created config : ", industry);
 
 
+}
+Config.prototype.epoch = function() {
+    return new Date(1970, 0, 1, 0, 0, 0, 0);
+}
+Config.prototype.formatDate = function(date) {
+    if (typeof date == "string") {
+        date = new Date(date);
+    }
+
+    var month = date.getMonth() + 1;
+    if (month < 10)
+        month = "0" + month.toString();
+    var day = date.getDate();
+    if (day < 10) {
+        day = "0" + day.toString();
+    }
+    var year = date.getFullYear();
+   /* var hours = date.getHours();
+    if (hours < 10) {
+        hours = "0" + hours;
+    }
+    var min = date.getMinutes();
+    if (min < 10) {
+        min = "0" + min;
+    }*/
+    return [month,day,year].join("-");
 }
 Config.prototype.get = function(key) {
     if (this._cache[key])return this._cache[key];
     var value = this._config[key] || this._globals[key];
-    console.log(key, ":", value);
+
     if (value.indexOf("{") != -1) {
         var self = this;
         value = value.replace(/\{([a-z]+)\}/ig, function(dummy, token) {
@@ -64,11 +91,13 @@ Config.prototype.get = function(key) {
     return value;
 }
 Config.prototype.webhook = function(uri, body) {
+
     this.request({
         method:"POST",
         uri:this.get("webhooks") + uri,
-        body:body,
-        json:true
+        json:body
+    }, function() {
+
     });
 }
 Config.prototype.request = function(options) {
@@ -96,6 +125,9 @@ Config.prototype.hash = function(obj) {
 }
 Config.prototype.queue = function(body, callback) {
     this.vineyard("GET", "/queue", body, callback);
+}
+Config.prototype.uri = function(where, endpoint) {
+    return this.get(where) + endpoint;
 }
 Config.prototype.vineyard = function(method, endpoint, body, callback) {
 

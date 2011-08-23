@@ -4,7 +4,7 @@
  * Date: 8/13/11
  * Time: 4:05 PM
  */
-var core = require('../core');
+var core = require(__dirname + '/../core');
 
 var REQUIRED_PARAMS = {
     view:"feature",
@@ -14,7 +14,7 @@ var REQUIRED_PARAMS = {
 };
 var methods = core.methods();
 var _url = require("url");
-methods.init();
+
 methods._parseRating = function($, data) {
 
 
@@ -79,21 +79,19 @@ methods._hasMore = function($, data, page) {
 
 
 }
-methods._save = function() {
-    this.debug(this._comments);
-    //this.debug("Comments", this._comments.length);
-}
 
-exports.job = core.job.extend({debug:false,site:"google.places.com",methods:methods}, {
-    input: [
+methods.init();
 
-        "http://maps.google.com/maps/place?cid=7512427536523652810&q=best+chevrolet,+kenner,+la&gl=us&ved=0CBAQ-gswAA&sa=X&ei=441FTv-KGZquywW4yfSlCA"
+exports.job = core.job.extend({debug:false,site:"places.google.com",methods:methods}, {
+    /*input: [
 
-    ],
-    run:function(url) {
+     "http://maps.google.com/maps/place?cid=7512427536523652810&q=best+chevrolet,+kenner,+la&gl=us&ved=0CBAQ-gswAA&sa=X&ei=441FTv-KGZquywW4yfSlCA"
+
+     ],*/
+    run:function(job) {
 
         // store url object for easy use in _page
-        this._query = _url.parse(url, true).query;
+        this._query = _url.parse(job.url, true).query;
 
 
         for (var key in REQUIRED_PARAMS) {
@@ -102,15 +100,16 @@ exports.job = core.job.extend({debug:false,site:"google.places.com",methods:meth
         //delete this._urlObj["href"];
 
 
-        url = make_url(this._query);
+        job.url = make_url(this._query);
 
 
-        core.job.run.call(this, url);
+        core.job.run.call(this, job);
 
     }
 });
+var qs = require("querystring");
 function make_url(query) {
-    return "http://maps.google.com/maps/place?" + require("querystring").stringify(query);
+    return "http://maps.google.com/maps/place?" + qs.stringify(query);
 }
 
 

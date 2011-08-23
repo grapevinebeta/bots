@@ -40,7 +40,9 @@ var Mixin = {
     content:String,
     title:String,
     category:String,
-    link:String
+    link:String,
+    hash:String,
+    insert_date:{type:Date,"default":Date.now}
 
 }
 
@@ -59,7 +61,8 @@ var Queue = new Schema({
     url:String,
     extra:{}
 });
-Queue.index({loc:1,site:1,status:1})
+//Queue.index({loc:1,site:1,priority:-1});
+Queue.index({site:1,status:1,priority:-1});
 var SiteRating = new Schema({
     loc:{type:Number,index:true},
     site:{type:String,index:true},
@@ -71,10 +74,12 @@ var SiteRating = new Schema({
 
 var Comment = new Schema(mix({
     score:Number,
-    identity:String,
-    metrics:[]
+    identity:String
+
 }, Mixin))
-Comment.index({date:1,loc:1,status:1,rating:1,site:1});
+
+
+Comment.index({loc:1,date:1,status:1,rating:1,site:1});
 
 var Social = new Schema(mix({
 
@@ -84,20 +89,20 @@ var Social = new Schema(mix({
 }, Mixin));
 
 var Metrics = new Schema({
-
-    name:String,
+    type:String,
     period:String,
-    start_date:Date,
+    date:Date,
     aggregates:{}
 
 
 });
-Metrics.index({name:1,period:1,start_date:1});
+Metrics.index({date:1,type:1,period:1});
 
 exports.schemas = {
     industry:{
         Comment:Comment,
-        Social:Social
+        /* Social:Social,*/
+        Metrics:Metrics
     },
     dashboard:{
         Queue:Queue

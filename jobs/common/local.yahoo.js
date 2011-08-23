@@ -4,10 +4,10 @@
  * Date: 8/13/11
  * Time: 6:38 PM
  */
-var core = require('../core');
+var core = require(__dirname + '/../core');
 
 var methods = core.methods();
-methods.init();
+
 methods._parseRating = function($, data) {
 
 
@@ -51,16 +51,17 @@ methods._hasMore = function($, data, page) {
 
 
 }
-methods._save = function() {
-    console.log(this._comments.length);
-}
+/*
+ methods._save = function() {
+ console.log(this._comments.length);
+ }*/
 methods.init();
 
-exports.job = core.job.extend({debug:false,site:"",methods:methods}, {
-    input: ["http://local.yahoo.com/info-19266582-lulus-bakery-cafe-san-antonio"],
-    run:function(url) {
-        url += "?tab=reviews&allreviews=1";
-        core.job.run.call(this, url);
+exports.job = core.job.extend({debug:false,site:"local.yahoo.com",methods:methods}, {
+    /*  input: ["http://local.yahoo.com/info-19266582-lulus-bakery-cafe-san-antonio"],*/
+    run:function(job) {
+        job.url = job.url + "?tab=reviews&allreviews=1";
+        core.job.run.call(this, job);
     }
 
 

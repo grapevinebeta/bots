@@ -9,17 +9,21 @@ var Config = require("./config").Config;
 Config = new Config();
 var comments = {
     "reviews":{
-        by:"site", // hash by comment.site, this will create a sub hash of aggregates.{id}{site}=defaults
+        by:function(comment) {
+            return comment.site.replace(/\./g, '_');
+        }, // hash by comment.site, this will create a sub hash of aggregates.{id}{site}=defaults
         overrall:true, // also store an overrall record which will have an date of epoch
         defaults:{
             points:0,
             count:0,
-            site:"site",
             negative:0,
             positive:0,
             neutral:0
         },
         counters:{
+            site:function(comment) {
+                return comment.site;
+            },
             points:function(comment, doc) {
                 return comment.score;
             },
@@ -54,27 +58,27 @@ var comments = {
         },
         finalize:function(db, comments, config) {
 
+
             var comment;
-            var alerts = [];
+            var to_send = [];
             var CommentClass = db.model("Comment");
             for (var i in comments) {
                 comment = comments[i];
-                if (comment.score < 3 && comment.score!=0) { // negative
+                if (comment.score < 3 && comment.score != 0) { // negative
                     comment.status = "alert";
+
                 } else {
                     comment.status = "new";
                 }
-                if (comment.status == "alert") { // comment needs to be comments, a batch request
-                    alerts.push(comment);
 
-                }
-
+                to_send.push(comment)
                 new CommentClass(comment).save();
             }
-            if (alerts.length) {
-                // TODO send alert
+
+            if (to_send.length) {
+
                 config.webhook('/emails/alerts', {
-                    documents:alerts
+                    documents:to_send
                 });
             }
 
@@ -117,17 +121,7 @@ var comments = {
 }
 
 
-var ratings = {
-    ratings:{
-        defaults:{
-            score:0
-        },
-        counters:{
-            score:"score"
-        }
-    }
-}
-exports = {
-    comments:comments,
-    ratings:ratings
+exports.config = {
+    comments:comments
+
 }

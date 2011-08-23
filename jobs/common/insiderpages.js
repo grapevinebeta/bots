@@ -5,7 +5,7 @@
  * Time: 2:55 AM
  */
 
-var core = require('../core');
+var core = require(__dirname + '/../core');
 
 var methods = core.methods();
 methods._parseRating = function($, data) {
@@ -51,14 +51,16 @@ methods._page = function(page) {
     return url;
 }
 methods._hasMore = function($, data, page) {
-    //this.debug("_hasMore", page, $("div.pagination a.next_page").length);
+
 
     return $("div.pagination a.next_page", data).length
 
 
 }
 
+methods.init();
+
 exports.job = core.job.extend({debug:false,site:"insiderpages.com",methods:methods}, {
-    input: ["http://www.insiderpages.com/b/9432965094/tom-benson-chevrolet-san-antonio"]
+    /*   input: ["http://www.insiderpages.com/b/9432965094/tom-benson-chevrolet-san-antonio"]*/
 
 });

@@ -4,7 +4,7 @@
  * Date: 7/14/11
  * Time: 1:05 AM
  */
-var core = require('../core');
+var core = require(__dirname + '/../core');
 var ABBR = {
     Jan:"Janurary",
     Feb:"February",
@@ -114,15 +114,16 @@ methods._hasMore = function($, data, page) {
         return true;
     }
     return false;
-
-
-}
-methods._save = function() {
-    this.debug("Comments", this._comments.length);
-    this.debug(this._comments);
 }
 
+/*
+ methods._save = function() {
+ this.debug("Comments", this._comments.length);
+ this.debug(this._comments);
+ }*/
+
+methods.init();
 exports.job = core.job.extend({debug:false,site:"superpages.com",methods:methods}, {
-    input: ["http://www.superpages.com/bp/San-Antonio-TX/Tom-Benson-Chevrolet-L0097625245.htm"]
+    /*input: ["http://www.superpages.com/bp/San-Antonio-TX/Tom-Benson-Chevrolet-L0097625245.htm"]*/
 
 });

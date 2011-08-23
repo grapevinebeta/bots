@@ -7,21 +7,7 @@
 var core = require(__dirname + '/../core');
 
 var methods = core.methods();
-methods.init();
-methods._parseRating = function($, data) {
 
-
-    var doc = this.createDefaultRating();
-    var html = $(data);
-
-    // site is on a out of 10 scale, we put it to a 5 point scale
-    doc.score; //parseInt($("span.average").text(), 10) / 2;
-
-    doc.rating;// = $("span.average").text();
-    doc.count;// = $("span.count").text();
-
-    return doc;
-}
 methods._parseComments = function($, data, page, callback, scope) {
     var comments = [];
     var self = this;
@@ -69,15 +55,19 @@ methods._hasMore = function($, data, page) {
 
 }
 
+methods.init();
 
-exports.job = core.job.extend({debug:false,site:"yellowpages.com",methods:methods}, {
-    input: ["http://www.yellowpages.com/san-antonio-tx/mip/alamo-cafe-7541887"],
-    run:function(url) {
-        this.id = url.replace(/[^0-9]+/g, "");
-        url = url + "/reviews?lid=" + this.id;
-        this.page_template = url + "&page={page}";
+exports.job = core.job.extend({flatten:false,debug:false,site:"yellowpages.com",methods:methods}, {
+    run:function(job) {
+
+
+        this.debug("Starting Yellowpages.com");
+        this.id = job.url.replace(/[^0-9]+/g, "");
+        job.url = job.url + "/reviews?lid=" + this.id;
+        this.page_template = job.url + "&page={page}";
+
         //http://www.yellowpages.com/kenner-la/mip/best-chevrolet-inc-21937087/reviews?lid=21937087
-        core.job.run.call(this, url);
+        core.job.run.call(this, job);
     }
 
 });

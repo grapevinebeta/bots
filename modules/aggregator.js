@@ -7,41 +7,42 @@
  */
 
 var _ = require(__dirname + '/merger');
-var Aggregates = require(__dirname + '/../config/aggregates');
+var Aggregates = require(__dirname + '/../config/aggregates').config;
 
-function formatDate(date) {
 
-    var month = date.getMonth() + 1;
-    if (month < 10)
-        month = "0" + month;
-    var day = date.getDate();
-    if (day < 10) {
-        day = "0" + day;
-    }
-    var year = date.getFullYear();
-    return [month,day,year].join("-");
-}
 exports.Aggregator = Aggregator = function(db, type, config) {
 
     this._db = db;
     this._config = config;
-    var MetricsClass = this._db.model("Metrics");
-    this._metrics = new MetricsClass();
+    //var MetricsClass =
+    this.Metrics = this._db.model("Metrics");
     this._type = type;
     this._aggregators = Aggregates[this._type];
+    this._objects = [];
     this._updates = {};
 }
-
+function log() {
+    console.log.call(null, arguments);
+}
+Aggregator.prototype.formatDate = function(date) {
+    return this._config.formatDate(date);
+}
 Aggregator.prototype.reset = function() {
     this._updates = {};
+    this._objects = [];
 }
 Aggregator.prototype.process = function(key, object) {
 
 
     var date,
-        path = "aggregates." + key;
-    for (var name in this._aggregators) {
-        date = formatDate(object.date);
+        path = key + "";
+
+
+    for (var name in  this._aggregators) {
+
+
+        date = this.formatDate(object.date);
+        object.date = new Date(date);
 
         var rules = this._aggregators[name];
 
@@ -67,7 +68,7 @@ Aggregator.prototype.process = function(key, object) {
         ];
         if (rules.overrall) {
             dates.push({
-                date:formatDate(new Date(0)),
+                date:this.formatDate(this._config.epoch()),
                 period:"overall"
             });// epoch
         }
@@ -76,100 +77,178 @@ Aggregator.prototype.process = function(key, object) {
 
             //by aggregate path
 
-            var date_info = dates[i];
-            var date = date_info.date;
-            var period = data_info.period;
+            var info = dates[i];
+            var date = info.date;
+            var period = info.period;
+
             if (!this._updates[name][date]) {
                 this._updates[name][date] = {
                     period:period,
                     data:{}
                 }
             }
-            //   if (!this._updates[name][date].data[path]) {
+
             var update;
+            var data = this._updates[name][date].data;
             // if we need to hash by a key value rather then setting
             // the values to the top level
-            if (rules.by) {
-                if (!this._updates[name][date].data[path]) {
-                    this._updates[name][date].data[path] = {};
+            if (typeof rules.by != "undefined") {
+                if (!data[path]) {
+                    data[path] = {};
                 }
+                var by = typeof rules.by == "function" ? rules.by(object) : object[rules.by];
                 // for hash like revies which are hashed as
                 //aggregates.{key}.{site}=defults
-                if (!this._updates[name][date].data[path][object[rules.by]]) {
+
+                if (!data[path][by]) {
                     update = _.clone(rules.defaults);
-                    this._updates[name][date].data[path][object[rules.by]] = update;
+                    data[path][by] = update;
                 } else {
-                    update = this._updates[name][date].data[path][object[rules.by]];
+                    update = data[path][by];
                 }
 
             } else {
-                if (!this._updates[name][date].data[path]) {
+                if (!data[path]) {
                     update = _.clone(rules.defaults);
-                    this._updates[name][date].data[path] = update;
+                    data[path] = update;
                 } else {
-                    update = this._updates[name][date].data[path];
+                    update = data[path];
                 }
             }
 
-            // }
-            //= this._updates[date][path];
 
             this._add(rules.counters, update, object);
         }
 
+
+    }
+    this._objects.push(object);
+
+
+}
+Aggregator.prototype.flush = function(inc) {
+
+    var self = this;
+    var fastmod = inc ? "$inc" : "$set";
+    process.nextTick(function() {
+        log("flushing...");
+        self._flush(fastmod);
+    });
+
+
+}
+Aggregator.prototype._flush = function(fastmod) {
+
+    var rules;
+    var objects = this._objects;
+    var db = this._db;
+    var config = this._config;
+    for (var name in  this._aggregators) {
+        rules = this._aggregators[name];
         if (typeof rules.finalize == "function") {
-            rules.finalize(this._db, object, this._config);
+            rules.finalize(db, objects, config);
         }
     }
+
+    this._update(fastmod);
+
 }
 Aggregator.prototype._add = function(counters, update, object) {
+    var value;
     for (var counter in counters) {
-        if (typeof counters[counter] == "object") {
-            this._add(counters[counter], update[counter], object);
-        } else if (typeof counters[counter] == "function") {
-            update[counter] += counters[counter](object);
-        } else if (typeof counters[counter] == 'number') {
-            update[counter] += counters[counter];
-        } else if (typeof counters[counter] == 'string') {
-            update[counter] += object[counters[counter]];
+        var applier = counters[counter];
+        if (typeof applier == "object") {
+            this._add(applier, update[counter], object);
+        } else if (typeof applier == "function") {
+            value = applier(object);
+        } else if (typeof applier == 'number') {
+            value = applier;
+        } else if (typeof applier == 'string') {
+            value = object[applier];
         }
+        if (typeof value == "undefined") continue;
+        if (typeof value == "string") {
+            update[counter] = value;
+        } else {
+            update[counter] += value;
+        }
+
     }
 }
 
-Aggregator.prototype.set = function() {
-
-
-    this._update('$set');
-
-
-}
 Aggregator.prototype._update = function(fastmod) {
     var options = {upsert:true},doc,selector;
 
+    /* var fs = require("fs");
+     var content = JSON.stringify(this._updates);
 
-    for (var date in this._updates[name]) {
-        var date_info = this._updates[name][date];
-        var period = date_info.period;
-        var data = date_info.data;
-        var doc = {};
-        doc[fastmod] = data;
-        selector = {
-            name:name,
-            period:period,
-            date:new Date(date)
-        };
+     fs.writeFileSync('updates.txt', content);
+     ;*/
+    for (var name in this._updates) {
+        var metric = this._updates[name];
+        //  fs.writeFileSync('metric-' + name + '.txt', JSON.stringify(metric));
+        for (var date in metric) {
+            var info = metric[date];
+            var period = info.period;
+            var data = info.data;
+            var doc = {
+                $inc:flatten({
+                    aggregates:data
+                })
+            };
+            // doc[fastmod] =
+            selector = {
+                date:new Date(date),
+                type:name,
+                period:period
+
+            };
 
 
+            //   console.log(selector);
+            //  console.log(doc[fastmod].aggregates);
+
+            this.Metrics.collection.update(selector, doc,
+                {safe:true,upsert:true}, function(err) {
+                    if (err) console.warn(err.message);
+                    else console.log('successfully updated');
+                });
+
+
+        }
     }
-//TODO add error checking on updates
-    this._metrics.collection.update(selector, doc, options);
+
     this.reset();
+
 }
+function flatten(obj, includePrototype, into, prefix) {
+    into = into || {};
+    prefix = prefix || "";
 
-Aggregator.prototype.inc = function(collection) {
 
-    this._update("$inc");
+    var has_nested;
+    var tmp = {};
+    var has_temp = false;
+    for (var k in obj) {
+        if (includePrototype || obj.hasOwnProperty(k)) {
+            var prop = obj[k];
+            if (prop && typeof prop === "object" &&
+                !(prop instanceof Date || prop instanceof RegExp)) {
+                has_nested = true;
+                flatten(prop, includePrototype, into, prefix + k + ".");
+            }
+            else {
+                has_temp = true;
+                into[prefix + k] = prop;
+
+            }
+        }
+    }
+    /*if (!has_nested || has_temp) {
+     into[prefix.substr(0, prefix.length - 1)] = tmp;
+     }*/
 
 
+    return into;
 }
 exports = Aggregator;
