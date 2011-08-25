@@ -179,14 +179,14 @@ Aggregator.prototype._add = function(counters, update, object) {
 Aggregator.prototype._update = function(fastmod) {
     var options = {upsert:true},doc,selector;
 
-    /* var fs = require("fs");
-     var content = JSON.stringify(this._updates);
+    var fs = require("fs");
+    var content = JSON.stringify(this._updates);
 
-     fs.writeFileSync('updates.txt', content);
-     ;*/
+    fs.writeFileSync('updates.txt', content);
+
     for (var name in this._updates) {
         var metric = this._updates[name];
-        //  fs.writeFileSync('metric-' + name + '.txt', JSON.stringify(metric));
+        fs.writeFileSync('metric-' + name + '.txt', JSON.stringify(metric));
         for (var date in metric) {
             var info = metric[date];
             var period = info.period;

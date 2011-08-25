@@ -9,10 +9,10 @@ var SECONDS = {
     MONTH:2629743.83,
     YEAR:31556926
 }
-var core = require('../core');
+var core = require(__dirname + '/../core');
 
 var methods = core.methods();
-var request = require("request");
+
 methods._parseRating = function($, data) {
 
 
@@ -105,20 +105,26 @@ methods._page = function(page) {
 }
 methods._hasMore = function($, data, page) {
 
-    var max = this.int($("td.PagerOtherPageCells a[title^='Show Result']:last", data).text());
-    return max != page;
+    var found = $("td.PagerOtherPageCells a[title^='Show Result']:last", data);
+    if (found.length) {
+        var max = this.int(found.text());
+        return max != page;
+    }
+
+    return false;
 
 
 }
 
+methods.init("automotive");
 
 exports.job = core.job.extend({debug:false,site:"judysbook.com",methods:methods}, {
-    input: ["http://www.judysbook.com/cities/sanantonio-tx/Auto-Parts/27802712/Tom_Benson_Chevrolet.htm"],
-    run:function(url) {
-        this.id = url.replace(/[^0-9]+/g, "");
-        this.page_template = url.replace(/([0-9]+)/, "$1/{page}");
+    /* input: ["http://www.judysbook.com/cities/sanantonio-tx/Auto-Parts/27802712/Tom_Benson_Chevrolet.htm"],*/
+    run:function(job) {
+        this.id = job.url.replace(/[^0-9]+/g, "");
+        this.page_template = job.url.replace(/([0-9]+)/, "$1/{page}");
 
-        core.job.run.call(this, url);
+        core.job.run.call(this, job);
 
     }
 

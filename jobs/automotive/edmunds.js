@@ -48,7 +48,7 @@ methods._parseComments = function($, data, page, callback, scope) {
                 var comment = self.createDefaultComment();
 
                 comment.date = new Date($el.find("span.dtreviewed").text());
-                comment.score = self.int($el.find("span.rating-big").attr("title"));
+                comment.score = self.float($el.find("span.rating-big").attr("title"));
                 comment.title = $el.find(".sales-review-item-title,.service-review-item-title").text();
                 comment.identity = $el.find("span.reviewer span.fn").text();
 
@@ -76,7 +76,7 @@ methods._parseComments = function($, data, page, callback, scope) {
     var check = function(comment) {
         if (self.check(comment)) {
 
-            self.debug(comment);
+
             comments.push(comment);
 
         }
@@ -112,15 +112,43 @@ methods._page = function(page) {
 
 }
 methods._hasMore = function($, data, page) {
-    return $("#page_" + (page + 1), data).length;
+    var hasMore = $("#page_" + (page + 1), data).length;
+    this.debug("Has More :" + hasMore);
+    return hasMore
 
 
 }
-methods._save = function() {
-    this.emit("finished");
-}
+/*methods._save = function() {
+ this.emit("finished");
+ }*/
+methods.init("automotive");
 
-exports.job = core.job.extend({debug:false,site:"",methods:methods}, {
-    input: ["http://www.edmunds.com/dealerships/Texas/SanAntonio/TomBensonChevrolet/service.1.html"]
+exports.job = core.job.extend({debug:false,site:"edmunds.com",methods:methods}, {
+    /* input: ["http://www.edmunds.com/dealerships/Texas/SanAntonio/TomBensonChevrolet/service.1.html"],*/
+    run:function(job) {
+        job.url = job.url.replace(/\?.+/, '');
+        this.debug("URL : " + job.url + " : " + job.url.indexOf(".html"));
+        if (job.url.indexOf(".html") == -1) {
+            job.url += "service.1.html";
+        }
+        this.debug("NEW URL :: " + job.url);
+        var url = job.url;
+        if (!job.added) {
+            this.debug("Adding new JOb");
+            if (url.indexOf('service.1.html') == -1) {
+                url = url.replace('service.1.html', 'sales.1.html');
+            } else {
+                url = url.replace('sales.1.html', 'service.1.html');
+            }
+            var newJob = {added:true};
+            for (var i in job) {
+                newJob[i] = job[i];
+            }
+            job.added = true;
+            this.add(newJob);
+        }
+
+        core.job.run.call(this, job);
+    }
 
 });

@@ -72,14 +72,14 @@ var SiteRating = new Schema({
 });
 
 
-var Comment = new Schema(mix({
+var Review = new Schema(mix({
     score:Number,
     identity:String
 
 }, Mixin))
 
 
-Comment.index({loc:1,date:1,status:1,rating:1,site:1});
+Review.index({loc:1,date:1,status:1,rating:1,site:1});
 
 var Social = new Schema(mix({
 
@@ -100,7 +100,7 @@ Metrics.index({date:1,type:1,period:1});
 
 exports.schemas = {
     industry:{
-        Comment:Comment,
+        Review:Review,
         /* Social:Social,*/
         Metrics:Metrics
     },

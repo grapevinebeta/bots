@@ -63,12 +63,13 @@ methods._hasMore = function($, data, page) {
 
 
 }
-methods._save = function() {
-    this.debug("Total Comments", this._comments.length);
-}
+/*
+ methods._save = function() {
+ this.debug("Total Comments", this._comments.length);
+ }*/
 methods.init();
 exports.job = core.job.extend({debug:false,site:"citysearch.com",methods:methods}, {
-    input: ["http://sanantonio.citysearch.com/profile/10106034/san_antonio_tx/tom_benson_chevrolet.html"],
+    /*input: ["http://sanantonio.citysearch.com/profile/10106034/san_antonio_tx/tom_benson_chevrolet.html"],*/
     run:function(job) {
 
         this.id = job.url.replace(/[^0-9]+/g, "");

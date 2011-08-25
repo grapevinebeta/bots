@@ -17,11 +17,11 @@ var METRICS = {
 }
 var RATING_REGX = /ratings([0-9]+)',\s([0-9]+),\s([0-9]+),\s([0-9]+),\s([0-9]+),\s([0-9]+)/;
 
-var core = require('../core');
+var core = require(__dirname + '/../core');
 
 
 var methods = core.methods();
-methods.init('automotive');
+
 
 methods._parseRating = function($, data) {
 
@@ -57,28 +57,11 @@ methods._parseComments = function($, data, page, callback, scope) {
         comment.content = $("span.description", this).text();
         comment.identity = $(".reviewer", this).text();
         comment.title = comment.content.substr(0, 40) + "...";
+        var score = $('.userReviewTopRight img', this).attr("src").replace(/[^0-9]+/g, '');
+        // self.debug(matches);
+        comment.score = self.float(score);
         if (self.check(comment)) {
-            // self.density(comment)
-
-
-            var matches = $('.userReviewTopRight script', this).text().match(RATING_REGX);
-
-
-            for (var i in METRICS) {
-                comment.metrics.push({
-                    metric:METRICS[i],
-                    value:parseInt(matches[i], 10)
-                });
-            }
-
-            var matches = $('.userReviewTopRight img', this).attr("src").match(/rating-([0-9]+).png/);
-            // self.debug(matches);
-            comment.score = parseInt(matches[1], 10);
-
-
             comments.push(comment);
-
-
         }
 
 
@@ -91,7 +74,7 @@ methods._parseComments = function($, data, page, callback, scope) {
  *
  */
 methods._page = function(page) {
-    return page == 1 ? this._currentURL : this._currentURL + "page" + page;
+    return page == 1 ? this._currentURL : this._currentURL + "page" + page + "/";
 }
 methods._hasMore = function($, data) {
     try {
@@ -104,9 +87,9 @@ methods._hasMore = function($, data) {
 
 
 }
-
+methods.init('automotive');
 exports.job = core.job.extend({debug:false,site:"dealerrater.com",methods:methods}, {
-    input: ["http://www.dealerrater.com/dealer/Tom-Williams-BMW-review-187/"]
+    /* input: ["http://www.dealerrater.com/dealer/Tom-Williams-BMW-review-187/"]*/
 
 });
 

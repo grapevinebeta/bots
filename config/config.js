@@ -2,6 +2,12 @@ var configs =
 {
     tokens:{
         dev:{
+            database:"mongodb://50.57.109.174",
+            app:"http://staging.pickgrapevine.com",
+            vineyard:"http://localhost"
+
+        },
+        staging:{
             database:"mongodb://localhost",
             app:"http://grapevine.localhost",
             vineyard:"http://localhost"
